@@ -1,0 +1,15 @@
+import { chromium } from '@playwright/test';
+const b = await chromium.launch({ channel: 'chrome' });
+const p = await b.newPage({ viewport: { width: 1920, height: 1080 } });
+await p.goto('http://localhost:5173/');
+await p.waitForFunction(() => '__stores' in window);
+await p.evaluate(() => { const w = window; w.__stores.ui.getState().setTemplateId('tech'); w.__stores.ui.getState().setStage('interior'); });
+await p.waitForFunction(() => '__camera' in window);
+await p.evaluate(() => { const w = window; w.__stores.project.getState().load(w.__tech.createTechTwoRooms()); w.__stores.ui.getState().setActiveRoom('a');
+  const d = w.__stores.drag.getState(); d.startFromCatalog('sofa_03'); d.pointAt({x:180,z:70},false); d.finish(); });
+await p.waitForTimeout(800);
+await p.screenshot({ path: 'docs/stage-6/01-room.png' });
+await p.getByRole('button', { name: 'Вся квартира' }).click();
+await p.waitForTimeout(300);
+await p.screenshot({ path: 'docs/stage-6/02-apartment.png' });
+await b.close();

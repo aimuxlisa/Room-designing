@@ -1,0 +1,11 @@
+{
+  "date": "2026-11-20T12:50:06.771Z",
+  "viewport": "1920x1080",
+  "browser": "Chrome (system)",
+  "gpu": "ANGLE (Intel, Intel(R) UHD Graphics 630 (0x00009BC8) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "sceneReadyMs": 664,
+  "firstModelsMs": 651,
+  "fps": 60.2,
+  "p95FrameMs": 16.8,
+  "note": "Техническая сцена: одна комната, 3 модели Poly Haven 1k, тени от одного источника."
+}

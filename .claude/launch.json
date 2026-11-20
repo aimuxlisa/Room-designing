@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "interior-planner", "runtimeExecutable": "npm", "runtimeArgs": ["--prefix", "interior-planner", "run", "dev"], "port": 5173 }
+  ]
+}
