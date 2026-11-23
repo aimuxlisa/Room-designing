@@ -1,7 +1,7 @@
 /** Базовые проверки целостности модели (этап 3). Каждая — отдельный валидатор (SRP). */
 import { boundingRect, rectDepth, rectWidth } from '../geometry/rect';
 import { inRange, LIMITS } from './limits';
-import { edgePoints, roomClearRect, roomOutline, roomSideWalls, SIDES } from './rooms';
+import { edgePoints, parseSurfaceKey, roomClearRect, roomOutline, roomSideWalls, SIDES } from './rooms';
 import type { Apartment, Room } from './types';
 import type { Issue, Validator } from './validation';
 import { nearlyEqual } from './units';
@@ -48,6 +48,12 @@ export const validateReferences: Validator = (ap) => {
     if (!ap.rooms[f.roomId]) out.push(issue('furniture-room-missing', `Предмет ${f.id} привязан к несуществующей комнате`, f.id));
   for (const roomId of Object.keys(ap.finishes.floors))
     if (!ap.rooms[roomId]) out.push(issue('finish-room-missing', `Покрытие пола назначено несуществующей комнате`, roomId));
+  // Отделка стены привязана к стабильной поверхности «стена + комната» (12.5): стена должна быть в границе комнаты.
+  for (const key of Object.keys(ap.finishes.walls)) {
+    const { wallId, roomId } = parseSurfaceKey(key);
+    if (!ap.rooms[roomId]?.boundary.some((e) => e.wallId === wallId))
+      out.push(issue('finish-surface-missing', 'Отделка назначена несуществующей поверхности стены', key));
+  }
   return out;
 };
 

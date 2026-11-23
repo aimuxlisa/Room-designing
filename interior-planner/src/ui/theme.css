@@ -26,6 +26,20 @@ body { background: var(--bg); color: var(--text); font: 14px/1.4 var(--font); }
 .muted { color: var(--text-muted); }
 .app-main { flex: 1; min-height: 0; display: grid; grid-template-columns: 220px 2fr 3fr; }
 .catalog { background: var(--surface); border-right: 1px solid var(--border); padding: 12px; overflow: auto; }
+/* Левая колонка интерьера: отделка выбранной стены над каталогом (этап 12). */
+.side-col { display: flex; flex-direction: column; min-height: 0; background: var(--surface); }
+.side-col .catalog { flex: 1; }
+.finish-panel { padding: 12px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); display: grid; gap: 8px; background: var(--surface-2); }
+.finish-panel h2 { font-size: 13px; margin: 0; font-weight: 600; }
+.finish-panel h3 { font-size: 12px; margin: 4px 0 0; color: var(--text-muted); font-weight: 500; display: flex; gap: 6px; align-items: center; }
+.finish-panel p { margin: 0; font-size: 12px; }
+.finish-panel .actions { display: flex; gap: 6px; }
+.finish-panel .actions button { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+.finish-panel .actions button:disabled { opacity: 0.5; cursor: default; }
+.swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+.swatch { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; padding: 0; }
+.swatch[aria-pressed='true'] { outline: 2px solid var(--accent); outline-offset: 2px; }
+.swatch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .catalog h2 { font-size: 13px; margin: 0 0 10px; font-weight: 600; display: flex; gap: 8px; align-items: center; }
 .catalog ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .badge { font-size: 11px; font-weight: 500; color: var(--text-muted); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; }
@@ -45,6 +59,13 @@ body { background: var(--bg); color: var(--text); font: 14px/1.4 var(--font); }
 .plan-item.draft.invalid { fill: var(--danger); stroke: var(--danger); }
 .pane { min-width: 0; min-height: 0; position: relative; }
 .pane-plan { border-right: 1px solid var(--border); background: var(--surface); }
+/* 3D и переходы между помещениями (этап 10). */
+.scene-wrap { position: absolute; inset: 0; }
+.scene-nav { position: absolute; top: 8px; left: 8px; display: flex; flex-wrap: wrap; gap: 6px; z-index: 1; }
+.scene-nav button, .scene-nav-note { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px 10px; font: inherit; font-size: 13px; }
+.scene-nav button { cursor: pointer; }
+.scene-nav button:hover { border-color: var(--accent); }
+.scene-nav-note { color: var(--text-muted); }
 .plan-wrap { display: flex; flex-direction: column; height: 100%; }
 .plan-toolbar { display: flex; gap: 6px; padding: 8px; border-bottom: 1px solid var(--border); }
 .plan-toolbar button {
@@ -60,8 +81,14 @@ body { background: var(--bg); color: var(--text); font: 14px/1.4 var(--font); }
 .plan-floor.active { fill: var(--surface-2); stroke: var(--accent); stroke-width: 1; stroke-opacity: 0.6; }
 .plan-room.clickable { cursor: pointer; }
 .plan-room.clickable:hover .plan-floor { fill-opacity: 0.7; }
-.plan-opening-gap { fill: var(--surface); }
+/* Разрыв только визуальный: клик проходит к стене под ним (настройка выбирает стену и в месте двери). */
+.plan-opening-gap { fill: var(--surface); pointer-events: none; }
 .plan-door-leaf { stroke: var(--text); stroke-width: 2; }
+/* Невидимые зоны выбора проёма (этап 9): полотно двери и контур окна. */
+.plan-opening-hit { fill: transparent; pointer-events: all; cursor: pointer; }
+.plan-finish { stroke-width: 5; pointer-events: none; }
+.plan-surface-selected { stroke: var(--accent); stroke-width: 3; stroke-dasharray: 6 4; pointer-events: none; }
+.plan-door.selected .plan-door-leaf, .plan-window.selected .plan-window-line { stroke: var(--accent); }
 .plan-door-arc { fill: none; stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 3 3; }
 .plan-window-line { stroke: var(--accent); stroke-width: 1.5; }
 .plan-dim.small { font-size: 11px; fill: var(--text-muted); }

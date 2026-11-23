@@ -1,9 +1,10 @@
 /** Слои SVG-плана. Каждый слой только рисует то, что выводят функции domain (SRP, DRY). */
 import type { PointerEvent } from 'react';
 import { instanceCorners } from '../domain/furniture';
-import { clearOffsetCm, doorSwing, openingFootprint, wallAxis, wallPoint, normalIntoRoom, openingSpan } from '../domain/openings';
-import { roomClearAreaCm2, roomClearRect, roomsOfWall, wallFootprint } from '../domain/rooms';
-import type { Apartment, CatalogItem, FurnitureInstance, Opening, Room } from '../domain/types';
+import { getWallMaterial } from '../catalog/materials';
+import { clearOffsetCm, clearSpan, doorSwing, openingFootprint, wallAxis, wallPoint, normalIntoRoom, openingSpan } from '../domain/openings';
+import { roomClearAreaCm2, roomClearRect, roomsOfWall, surfaceKey, wallFootprint } from '../domain/rooms';
+import type { Apartment, CatalogItem, FurnitureInstance, Opening, Room, WallSurfaceRef } from '../domain/types';
 import { formatCm, formatM2 } from '../domain/units';
 import { rectDepth, rectWidth, type Point, type Rect } from '../geometry/rect';
 import { toScreen, type ViewTransform } from './viewTransform';
@@ -58,17 +59,46 @@ export function Walls({
   );
 }
 
+/** Полоса шириной 2·halfPx вокруг отрезка на экране: зона выбора полотна двери (у линии нулевая высота bbox). */
+function leafBand(a: { x: number; y: number }, b: { x: number; y: number }, halfPx: number): string {
+  const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+  const nx = (-(b.y - a.y) / len) * halfPx;
+  const ny = ((b.x - a.x) / len) * halfPx;
+  return [
+    [a.x + nx, a.y + ny],
+    [b.x + nx, b.y + ny],
+    [b.x - nx, b.y - ny],
+    [a.x - nx, a.y - ny],
+  ]
+    .map(([x, y]) => `${x},${y}`)
+    .join(' ');
+}
+
 /** Проём: разрыв в стене; дверь — полотно и дуга створки; окно — две линии остекления. */
-export function OpeningSymbol({ ap, o, t }: T & { ap: Apartment; o: Opening }) {
+export function OpeningSymbol({
+  ap,
+  o,
+  t,
+  selected,
+  onSelect,
+}: T & { ap: Apartment; o: Opening; selected?: boolean; onSelect?: () => void }) {
   const gap = <polygon className="plan-opening-gap" points={pts(t, openingFootprint(ap, o))} />;
+  // Выбор проёма — только по невидимой зоне (полотно двери или контур окна), не по разрыву: клик по стене рядом с дверью выбирает стену.
+  const select = onSelect && ((e: PointerEvent<SVGElement>) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    onSelect();
+  });
+  const cls = (base: string) => (selected ? `${base} selected` : base);
   if (o.kind === 'door') {
     const s = doorSwing(ap, o);
     const [h, e] = [toScreen(t, s.hinge), toScreen(t, s.leafEnd)];
     return (
-      <g data-testid={`plan-opening-${o.id}`} className="plan-door">
+      <g data-testid={`plan-opening-${o.id}`} className={cls('plan-door')}>
         {gap}
         <line x1={h.x} y1={h.y} x2={e.x} y2={e.y} className="plan-door-leaf" />
         <polyline points={pts(t, s.arc)} className="plan-door-arc" />
+        {select && <polygon points={leafBand(h, e, 7)} className="plan-opening-hit" onPointerDown={select} />}
       </g>
     );
   }
@@ -81,10 +111,11 @@ export function OpeningSymbol({ ap, o, t }: T & { ap: Apartment; o: Opening }) {
     return <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} className="plan-window-line" />;
   };
   return (
-    <g data-testid={`plan-opening-${o.id}`} className="plan-window">
+    <g data-testid={`plan-opening-${o.id}`} className={cls('plan-window')}>
       {gap}
       {line(-wall.thicknessCm / 6)}
       {line(wall.thicknessCm / 6)}
+      {select && <polygon points={pts(t, openingFootprint(ap, o))} className="plan-opening-hit" onPointerDown={select} />}
     </g>
   );
 }
@@ -147,4 +178,42 @@ export function FurnitureShape(props: T & {
       onPointerDown={props.onPointerDown}
     />
   );
+}
+
+/**
+ * Отделка внутренних поверхностей (12.6): полоса вдоль чистой грани стены со стороны комнаты цветом
+ * материала; выбранная поверхность — пунктиром акцента. Другая сторона общей стены рисуется отдельно.
+ */
+export function WallFinishes({ ap, rooms, t, selected }: T & { ap: Apartment; rooms: readonly Room[]; selected: WallSurfaceRef | null }) {
+  const strips = rooms.flatMap((room) =>
+    room.boundary.map(({ wallId }) => {
+      const material = getWallMaterial(ap.finishes.walls[surfaceKey(wallId, room.id)] ?? '');
+      const isSelected = selected?.wallId === wallId && selected.roomId === room.id;
+      if (!material && !isSelected) return null;
+      const wall = ap.walls[wallId];
+      const axis = wallAxis(ap, wall);
+      const n = normalIntoRoom(ap, wall, room);
+      const [s0, s1] = clearSpan(ap, wall, room);
+      const d = wall.thicknessCm / 2 + 3 / t.scale;
+      const [a, b] = [toScreen(t, wallPoint(axis, s0, n, d)), toScreen(t, wallPoint(axis, s1, n, d))];
+      return (
+        <g key={`${wallId}-${room.id}`}>
+          {material && (
+            <line
+              x1={a.x}
+              y1={a.y}
+              x2={b.x}
+              y2={b.y}
+              className="plan-finish"
+              stroke={material.color}
+              data-testid={`plan-finish-${wallId}-${room.id}`}
+              data-material={material.id}
+            />
+          )}
+          {isSelected && <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} className="plan-surface-selected" data-testid="plan-surface-selected" />}
+        </g>
+      );
+    }),
+  );
+  return <>{strips}</>;
 }

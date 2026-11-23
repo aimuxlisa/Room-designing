@@ -10,7 +10,7 @@ import { wallAxis } from '../domain/openings';
 import type { Point } from '../geometry/rect';
 import { snapCm } from '../geometry/placement';
 import { roomsOfWall } from '../domain/rooms';
-import { FurnitureShape, OpeningLabel, OpeningSymbol, RoomCaption, RoomDimensions, RoomFloor, Walls } from './PlanLayers';
+import { FurnitureShape, OpeningLabel, OpeningSymbol, RoomCaption, RoomDimensions, RoomFloor, WallFinishes, Walls } from './PlanLayers';
 import { contentRect } from './planContent';
 import { fitTransform, panBy, toWorld, zoomAt, type ViewTransform } from './viewTransform';
 
@@ -43,10 +43,12 @@ export function PlanView({ mode = 'interior' }: { mode?: 'setup' | 'interior' })
   const uiScope = useUi((s) => s.planScope);
   const scope = mode === 'setup' ? 'apartment' : uiScope;
   const selectedWall = useSetup((s) => s.wallId);
+  const selectedOpening = useSetup((s) => s.openingId);
   const proposal = useSetup((s) => s.proposal);
   const ap = mode === 'setup' && proposal?.ok ? proposal.candidate : base;
   const wallDrag = useRef<{ wallId: string; start: Point; vertical: boolean } | null>(null);
   const selectedId = useUi((s) => s.selectedId);
+  const selectedSurface = useUi((s) => s.selectedSurface);
   const ref = useRef<HTMLDivElement>(null);
   const size = useSize(ref);
   /** Пользовательский вид; null — вписанный. Сбрасывается при смене комнаты или режима. */
@@ -139,6 +141,9 @@ export function PlanView({ mode = 'interior' }: { mode?: 'setup' | 'interior' })
         }}
         onPointerUp={(e) => {
           if (e.button === 1) pan.current = null;
+          // Предмет ставится в точку отпускания, даже если браузер объединил последние движения
+          // (обработчик React срабатывает раньше завершения переноса на window).
+          if (e.button === 0 && t && drag.getState().draft) drag.getState().pointAt(toCm(e), !e.altKey);
           if (e.button === 0 && wallDrag.current) {
             wallDrag.current = null;
             setup.getState().apply(); // перетаскивание применяется при отпускании (SPEC §9)
@@ -172,11 +177,24 @@ export function PlanView({ mode = 'interior' }: { mode?: 'setup' | 'interior' })
                       const axis = wallAxis(base, base.walls[wallId]);
                       wallDrag.current = { wallId, start: toCm(e), vertical: Math.abs(axis.dir.x) < 0.5 };
                     }
-                  : undefined
+                  : (wallId, e) => {
+                      // Интерьер: геометрия не меняется; нажатие выбирает поверхность стены активной комнаты для отделки (12.1).
+                      if (e.button !== 0 || !active?.boundary.some((b) => b.wallId === wallId) || draft) return;
+                      e.stopPropagation();
+                      ui.getState().selectSurface({ wallId, roomId: active.id });
+                    }
               }
             />
+            {mode === 'interior' && <WallFinishes ap={ap} rooms={rooms} t={t} selected={selectedSurface} />}
             {openings.map((o) => (
-              <OpeningSymbol key={o.id} ap={ap} o={o} t={t} />
+              <OpeningSymbol
+                key={o.id}
+                ap={ap}
+                o={o}
+                t={t}
+                selected={mode === 'setup' && selectedOpening === o.id}
+                onSelect={mode === 'setup' ? () => setup.getState().selectOpening(o.id) : undefined}
+              />
             ))}
             {furniture.map((f) => {
               const item = catalog(f.catalogItemId);

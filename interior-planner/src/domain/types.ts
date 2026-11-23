@@ -159,6 +159,8 @@ export interface MaterialDefinition {
   /** Физический размер одного повтора текстуры (SPEC §13). */
   readonly tileSizeCm?: { readonly widthCm: number; readonly heightCm: number };
   readonly roughness: number;
+  /** Источник и лицензия (для текстур). */
+  readonly source?: string;
 }
 
 export interface LayoutTemplate {

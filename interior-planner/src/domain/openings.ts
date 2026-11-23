@@ -72,6 +72,10 @@ export function openingFootprint(ap: Apartment, o: Opening): Point[] {
 export const clearOffsetCm = (ap: Apartment, o: Opening, room: Room): number =>
   o.offsetCm - clearSpan(ap, ap.walls[o.wallId], room)[0];
 
+/** Положение проёма по чистому отступу от угла комнаты, см (обратно к clearOffsetCm). */
+export const offsetFromClearCm = (ap: Apartment, wall: Wall, room: Room, clearCm: number): number =>
+  clearCm + clearSpan(ap, wall, room)[0];
+
 export const openingSpan =(o: Opening): [number, number] => [o.offsetCm, o.offsetCm + o.widthCm];
 
 /** Вертикальный диапазон проёма над полом, см. */

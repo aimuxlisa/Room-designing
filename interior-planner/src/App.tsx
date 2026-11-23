@@ -7,6 +7,7 @@ import { SchemePicker } from './start/SchemePicker';
 import { StartParams } from './start/StartParams';
 import type { EditorStage } from './store/uiStore';
 import { CatalogPanel } from './ui/CatalogPanel';
+import { FinishPanel } from './ui/FinishPanel';
 import { useEditorHotkeys } from './ui/useEditorHotkeys';
 
 const STEPS: readonly { stage: EditorStage; label: string }[] = [
@@ -60,7 +61,10 @@ function Interior() {
   return (
     <>
       <main className="app-main">
-        <CatalogPanel />
+        <div className="side-col">
+          <FinishPanel />
+          <CatalogPanel />
+        </div>
         <section className="pane pane-plan" aria-label="План">
           <PlanView />
         </section>

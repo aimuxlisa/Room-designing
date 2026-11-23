@@ -10,6 +10,10 @@ export type Side = 'minX' | 'maxX' | 'minZ' | 'maxZ';
 export const SIDES: readonly Side[] = ['minX', 'maxX', 'minZ', 'maxZ'];
 
 export const surfaceKey = (wallId: Id, roomId: Id): string => `${wallId}|${roomId}`;
+export const parseSurfaceKey = (key: string): { wallId: Id; roomId: Id } => {
+  const [wallId, roomId] = key.split('|');
+  return { wallId, roomId };
+};
 
 const toPoint = (v: Vertex): Point => ({ x: v.xCm, z: v.zCm });
 

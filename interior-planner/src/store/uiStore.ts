@@ -1,6 +1,6 @@
 /** Состояние интерфейса: не входит в проект и в историю отмены (SPEC §6 EditorState, §8). */
 import { create } from 'zustand';
-import type { Id } from '../domain/types';
+import type { Id, WallSurfaceRef } from '../domain/types';
 
 /** Шаги приложения (SPEC §8). */
 export type EditorStage = 'params' | 'scheme' | 'setup' | 'interior';
@@ -27,6 +27,8 @@ export interface UiState {
   readonly planScope: PlanScope;
   readonly activeRoomId: Id | null;
   readonly selectedId: Id | null;
+  /** Выбранная внутренняя поверхность стены для отделки (этап 12); исключает выбор предмета. */
+  readonly selectedSurface: WallSurfaceRef | null;
   readonly camera: CameraState | null;
   setStage(stage: EditorStage): void;
   setStart(patch: Partial<StartInput>): void;
@@ -35,6 +37,7 @@ export interface UiState {
   /** Смена комнаты сбрасывает выбор. */
   setActiveRoom(roomId: Id | null): void;
   select(id: Id | null): void;
+  selectSurface(surface: WallSurfaceRef | null): void;
   setCamera(camera: CameraState): void;
 }
 
@@ -46,12 +49,14 @@ export const createUiStore = () =>
     planScope: 'room',
     activeRoomId: null,
     selectedId: null,
+    selectedSurface: null,
     camera: null,
     setStage: (stage) => set({ stage }),
     setStart: (patch) => set((s) => ({ start: { ...s.start, ...patch } })),
     setTemplateId: (templateId) => set({ templateId }),
     setPlanScope: (planScope) => set({ planScope }),
-    setActiveRoom: (activeRoomId) => set({ activeRoomId, selectedId: null }),
-    select: (selectedId) => set({ selectedId }),
+    setActiveRoom: (activeRoomId) => set({ activeRoomId, selectedId: null, selectedSurface: null }),
+    select: (selectedId) => set(selectedId ? { selectedId, selectedSurface: null } : { selectedId }),
+    selectSurface: (selectedSurface) => set(selectedSurface ? { selectedSurface, selectedId: null } : { selectedSurface }),
     setCamera: (camera) => set({ camera }),
   }));

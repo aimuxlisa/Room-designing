@@ -13,7 +13,7 @@ const t0 = Date.now();
 await page.goto('http://localhost:5173/');
 await page.waitForFunction(() => '__stores' in window);
 await page.evaluate(() => { const w = window; w.__stores.project.getState().load(w.__tech.createTechApartment()); w.__stores.ui.getState().setTemplateId('tech'); w.__stores.ui.getState().setActiveRoom('tech-room'); w.__stores.ui.getState().setStage('interior'); });
-await page.waitForFunction(() => '__camera' in window && window.__scene.getObjectByName('floor'));
+await page.waitForFunction(() => '__camera' in window && window.__scene.getObjectByName('floor-tech-room'));
 const sceneReadyMs = Date.now() - t0;
 
 const gpu = await page.evaluate(() => {

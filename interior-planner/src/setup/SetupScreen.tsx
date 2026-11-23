@@ -23,6 +23,7 @@ import { formatCm, formatM2, parseCmInput } from '../domain/units';
 import { rectDepth, rectWidth } from '../geometry/rect';
 import { PlanView } from '../plan2d/PlanView';
 import { areaChange, roomChanges } from './changes';
+import { OpeningPanel } from './OpeningPanel';
 
 const issueOf = (p: Proposal | null) => (p && !p.ok ? p.issues[0].message : null);
 
@@ -167,6 +168,7 @@ function CeilingPanel() {
 export function SetupScreen() {
   const stores = useStores();
   const ap = useApartment();
+  const openingId = useSetup((s) => s.openingId);
   useEffect(() => () => stores.setup.getState().selectWall(null), [stores]);
   return (
     <div className="setup">
@@ -182,7 +184,7 @@ export function SetupScreen() {
           <dt>Мебели</dt>
           <dd data-testid="setup-furniture-count">{Object.keys(ap.furniture).length}</dd>
         </dl>
-        <WallPanel />
+        {openingId ? <OpeningPanel key={openingId} /> : <WallPanel />}
         <CeilingPanel />
         <div className="actions">
           <button type="button" onClick={() => stores.ui.getState().setStage('scheme')}>

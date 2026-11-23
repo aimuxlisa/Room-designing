@@ -14,7 +14,7 @@ test('4.1: техническая комната 420 × 350 см одинако�
   const floor3d = await page.waitForFunction(() => {
     type Obj = { name: string; userData: Record<string, number>; geometry?: { parameters: { width: number; height: number } } };
     const scene = (window as unknown as { __scene?: { getObjectByName(n: string): Obj | undefined } }).__scene;
-    const f = scene?.getObjectByName('floor');
+    const f = scene?.getObjectByName('floor-tech-room');
     return f ? { w: f.geometry!.parameters.width, h: f.geometry!.parameters.height } : null;
   });
   const dims = await floor3d.jsonValue();

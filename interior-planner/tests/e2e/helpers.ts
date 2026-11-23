@@ -27,5 +27,6 @@ export async function openTech(
     },
     [kind, roomId, stage] as const,
   );
-  if (stage === 'interior') await page.waitForFunction(() => '__camera' in window);
+  // Ждать, пока камера встанет на вид этой комнаты (CameraRig), иначе экранные точки 3D считаются по старой камере.
+  if (stage === 'interior') await page.waitForFunction((r) => (window as unknown as { __view?: string }).__view === r, roomId);
 }
