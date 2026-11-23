@@ -5,7 +5,7 @@
 import { OrbitControls } from '@react-three/drei';
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { Suspense, useEffect, useMemo, useRef, type ReactNode } from 'react';
-import { Mesh, Plane, RepeatWrapping, SRGBColorSpace, TextureLoader, Vector2, Vector3, type Group } from 'three';
+import { DoubleSide, Mesh, Plane, RepeatWrapping, SRGBColorSpace, TextureLoader, Vector2, Vector3, type Group } from 'three';
 import { getWallMaterial } from '../catalog/materials';
 import { surfaceKey } from '../domain/rooms';
 import { tileUv, type TileUv } from '../domain/surfaces';
@@ -20,9 +20,13 @@ import type { Apartment, CatalogItem, DoorOpening, FurnitureInstance, Opening, R
 import { themeTokens } from '../ui/themeTokens';
 import { cmToScene, sceneToCm } from '../domain/units';
 import { wallBlocks, wallSpanRect } from '../domain/wallBlocks';
+import { rotatePoint } from '../geometry/placement';
 import { rectDepth, rectWidth, type Point, type Rect } from '../geometry/rect';
+import { useAssetStatus } from './assetStatus';
 import { FurnitureModel } from './FurnitureModel';
 import { roomView } from './roomView';
+import { SceneLighting } from './SceneLighting';
+import { openingFinish } from '../catalog/openingFinishes';
 
 const center = (r: Rect) => ({ x: (r.minX + r.maxX) / 2, z: (r.minZ + r.maxZ) / 2 });
 const FLOOR = new Plane(new Vector3(0, 1, 0), 0);
@@ -30,7 +34,7 @@ const NO_RAYCAST = () => {};
 const WALL_COLOR = '#d9d4cb';
 
 /** Точка пола под указателем: пересечение луча с плоскостью y = 0 (а не точка на поверхности модели). */
-function floorPoint(e: ThreeEvent<PointerEvent>): Point {
+function floorPoint(e: ThreeEvent<PointerEvent> | ThreeEvent<MouseEvent>): Point {
   const p = e.ray.intersectPlane(FLOOR, new Vector3()) ?? e.point;
   return { x: sceneToCm(p.x), z: sceneToCm(p.z) };
 }
@@ -47,14 +51,42 @@ function BlockMesh({ rect, bottomCm, topCm, name, children }: { rect: Rect; bott
 }
 
 /** Окно — стекло в отверстии; дверь — полотно, открытое на 90° в эту комнату (та же створка, что на плане). */
+/** Рама окна (D-26): обвязка по контуру и вертикальный импост, толщина 6 см, по центру стены. */
+function WindowFrame({ ap, wall, o }: { ap: Apartment; wall: Wall; o: Opening }) {
+  const [s0, s1] = openingSpan(o);
+  const [bottom, top] = openingVerticalRange(o);
+  const f = openingFinish(o);
+  const bar = 6;
+  const mid = (s0 + s1) / 2;
+  const parts: [number, number, number, number][] = [
+    [s0, s0 + bar, bottom, top],
+    [s1 - bar, s1, bottom, top],
+    [s0, s1, bottom, bottom + bar],
+    [s0, s1, top - bar, top],
+    [mid - bar / 2, mid + bar / 2, bottom, top],
+  ];
+  return (
+    <>
+      {parts.map(([a, b, lo, hi], i) => (
+        <BlockMesh key={i} name={`window-frame-${o.id}-${i}`} rect={wallSpanRect(ap, wall, a, b, 8)} bottomCm={lo} topCm={hi}>
+          <meshStandardMaterial color={f.color} roughness={f.roughness} />
+        </BlockMesh>
+      ))}
+    </>
+  );
+}
+
 function OpeningMesh({ ap, wall, o, room }: { ap: Apartment; wall: Wall; o: Opening; room: Room }) {
   const [s0, s1] = openingSpan(o);
   if (o.kind === 'window') {
     const [bottom, top] = openingVerticalRange(o);
     return (
-      <BlockMesh name={`window-${o.id}`} rect={wallSpanRect(ap, wall, s0, s1, 2)} bottomCm={bottom} topCm={top}>
-        <meshStandardMaterial color="#9fc6e0" transparent opacity={0.25} depthWrite={false} />
-      </BlockMesh>
+      <>
+        <BlockMesh name={`window-${o.id}`} rect={wallSpanRect(ap, wall, s0, s1, 2)} bottomCm={bottom} topCm={top}>
+          <meshStandardMaterial color="#9fc6e0" transparent opacity={0.25} depthWrite={false} />
+        </BlockMesh>
+        <WindowFrame ap={ap} wall={wall} o={o} />
+      </>
     );
   }
   if (o.opensIntoRoomId !== room.id) return null;
@@ -68,7 +100,7 @@ function OpeningMesh({ ap, wall, o, room }: { ap: Apartment; wall: Wall; o: Open
       castShadow
     >
       <boxGeometry args={[cmToScene(Math.hypot(dx, dz)), cmToScene(o.heightCm), cmToScene(4)]} />
-      <meshStandardMaterial color="#8a6a4a" />
+      <meshStandardMaterial color={openingFinish(o).color} roughness={openingFinish(o).roughness} />
     </mesh>
   );
 }
@@ -232,6 +264,52 @@ function SelectionOutline({ item, f }: { item: CatalogItem; f: FurnitureInstance
   );
 }
 
+/**
+ * Кольцо поворота вокруг выбранного предмета в 3D (14.4): тянуть по полу — лицевая сторона смотрит
+ * на указатель; тот же цикл переноса, что у ручки на плане. У настенных предметов кольца нет.
+ */
+function RotateRing({ item, f, onStart }: { item: CatalogItem; f: FurnitureInstance; onStart: (e: ThreeEvent<PointerEvent>) => void }) {
+  const inner = Math.hypot(item.size.widthCm, item.size.depthCm) / 2 + 10;
+  return (
+    <mesh
+      name={`rotate-ring-${f.id}`}
+      rotation-x={-Math.PI / 2}
+      position={[cmToScene(f.position.xCm), cmToScene(1.5), cmToScene(f.position.zCm)]}
+      onPointerDown={onStart}
+    >
+      <ringGeometry args={[cmToScene(inner), cmToScene(inner + 9), 64]} />
+      <meshBasicMaterial color={themeTokens.accent} transparent opacity={0.55} side={DoubleSide} depthWrite={false} />
+    </mesh>
+  );
+}
+
+/**
+ * Настенный предмет скрывается вместе со своей стеной, когда камера за этой стеной (как откосы и окна),
+ * и тогда не перехватывает указатель (Raycaster в three не учитывает visible).
+ */
+function HideBehindWall({ f, item, children }: { f: FurnitureInstance; item: CatalogItem; children: ReactNode }) {
+  const ref = useRef<Group>(null);
+  const shown = useRef(true);
+  // Задняя сторона предмета — у стены; наружу от комнаты смотрит её нормаль.
+  const r = rotatePoint({ x: 0, z: -item.size.depthCm / 2 }, f.angleDeg);
+  const len = Math.hypot(r.x, r.z) || 1;
+  const back = { x: f.position.xCm + r.x, z: f.position.zCm + r.z };
+  const out = { x: r.x / len, z: r.z / len };
+  useFrame(({ camera }) => {
+    const g = ref.current;
+    if (!g) return;
+    const visible = (sceneToCm(camera.position.x) - back.x) * out.x + (sceneToCm(camera.position.z) - back.z) * out.z < 0;
+    g.visible = visible;
+    // Модель может догрузиться позже — пока предмет скрыт, raycast отключается у всех его мешей каждый кадр.
+    if (visible === shown.current && visible) return;
+    shown.current = visible;
+    g.traverse((o) => {
+      if (o instanceof Mesh) o.raycast = visible ? Mesh.prototype.raycast : NO_RAYCAST;
+    });
+  });
+  return <group ref={ref}>{children}</group>;
+}
+
 function Furniture({ room }: { room: Room }) {
   const ap = useApartment();
   const catalog = useCatalog();
@@ -241,15 +319,21 @@ function Furniture({ room }: { room: Room }) {
   const selected = selectedId ? ap.furniture[selectedId] : undefined;
   const selectedItem = selected && selected.roomId === room.id && !draft ? catalog(selected.catalogItemId) : undefined;
   const draftItem = draft?.position ? catalog(draft.itemId) : undefined;
-  // OrbitControls получает pointerdown раньше событий сцены — отключаем его синхронно при захвате.
-  const controls = useThree((s) => s.controls) as unknown as { enabled: boolean } | null;
+  // OrbitControls получает pointerdown раньше событий сцены — отключаем его синхронно при захвате;
+  // включает его снова свойство enabled={!dragging}, когда кандидата больше нет.
+  const getState = useThree((s) => s.get);
+  const holdCamera = () => {
+    const c = getState().controls as unknown as { enabled: boolean } | null;
+    if (c) c.enabled = false;
+  };
   return (
     <>
       {Object.values(ap.furniture)
         .filter((f) => f.roomId === room.id && f.id !== draft?.instanceId)
         .map((f) => {
           const item = catalog(f.catalogItemId);
-          return item ? (
+          if (!item) return null;
+          const model = (
             <FurnitureModel
               key={f.id}
               item={item}
@@ -257,12 +341,19 @@ function Furniture({ room }: { room: Room }) {
               onPointerDown={(e) => {
                 if (e.button !== 0) return;
                 e.stopPropagation();
-                if (controls) controls.enabled = false;
+                holdCamera();
                 ui.getState().select(f.id);
                 drag.getState().startMove(f.id, floorPoint(e));
               }}
             />
-          ) : null;
+          );
+          return item.mounting === 'wall' ? (
+            <HideBehindWall key={f.id} f={f} item={item}>
+              {model}
+            </HideBehindWall>
+          ) : (
+            model
+          );
         })}
       {draft?.position && draftItem && (
         <FurnitureModel
@@ -272,42 +363,69 @@ function Furniture({ room }: { room: Room }) {
         />
       )}
       {selected && selectedItem && <SelectionOutline item={selectedItem} f={selected} />}
+      {selected && selectedItem && selectedItem.mounting !== 'wall' && (
+        <RotateRing
+          item={selectedItem}
+          f={selected}
+          onStart={(e) => {
+            if (e.button !== 0) return;
+            e.stopPropagation();
+            holdCamera();
+            drag.getState().startRotate(selected.id);
+          }}
+        />
+      )}
     </>
   );
 }
 
 interface Controls {
   readonly target: Vector3;
-  minDistance: number;
-  maxDistance: number;
   update(): void;
 }
 
-/** При входе в комнату камера ставится напротив двери; пределы приближения — по размеру комнаты (10.3). */
-function CameraRig({ room }: { room: Room }) {
-  const ap = useApartment();
+/**
+ * При входе в комнату камера ставится напротив двери (10.3). Срабатывает только при смене комнаты:
+ * квартира читается из хранилища в момент входа, поэтому перенос мебели камеру не сбрасывает.
+ */
+function CameraRig({ roomId }: { roomId: string }) {
+  const { project } = useStores();
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls) as unknown as Controls | null;
-  const apRef = useRef(ap);
-  apRef.current = ap;
   useEffect(() => {
-    if (!controls) return;
-    const v = roomView(apRef.current, room);
+    const ap = project.getState().history.present;
+    const room = ap.rooms[roomId];
+    if (!controls || !room) return;
+    const v = roomView(ap, room);
     camera.position.set(...v.position);
     controls.target.set(...v.target);
-    controls.minDistance = v.minDistance;
-    controls.maxDistance = v.maxDistance;
     controls.update();
     // Для браузерных проверок: вид комнаты установлен (камера и цель на месте).
-    if (import.meta.env.DEV) Object.assign(window, { __view: room.id, __controls: controls });
-    // Только смена комнаты: перенос мебели не должен сбрасывать камеру, поэтому квартира берётся из ref.
-  }, [room.id, controls, camera]);
+    if (import.meta.env.DEV) Object.assign(window, { __view: roomId, __controls: controls });
+  }, [roomId, controls, camera, project]);
   return null;
+}
+
+/** Пол комнаты: покрытие (D-16, D-25) с физическим повтором текстуры или базовый цвет. */
+function FloorMesh({ ap, room, clear }: { ap: Apartment; room: Room; clear: Rect }) {
+  const c = center(clear);
+  const [w, d] = [rectWidth(clear), rectDepth(clear)];
+  const finish = getWallMaterial(ap.finishes.floors[room.id] ?? '');
+  return (
+    <mesh name={`floor-${room.id}`} rotation-x={-Math.PI / 2} position={[cmToScene(c.x), 0, cmToScene(c.z)]} receiveShadow>
+      <planeGeometry args={[cmToScene(w), cmToScene(d)]} />
+      {finish?.textureUrl && finish.tileSizeCm ? (
+        <WallpaperMaterial key={finish.id} attach="material" m={finish} uv={tileUv(clear.minX, w, clear.minZ, d, finish.tileSizeCm)} />
+      ) : (
+        <meshStandardMaterial color={finish?.color ?? '#b89a74'} />
+      )}
+    </mesh>
+  );
 }
 
 function RoomContent() {
   const ap = useApartment();
-  const { drag } = useStores();
+  const { drag, ui } = useStores();
   const dragging = useDrag((s) => s.draft !== null);
   const roomId = useUi((s) => s.activeRoomId);
   const room = roomId ? ap.rooms[roomId] : undefined;
@@ -315,12 +433,11 @@ function RoomContent() {
   const clear = roomClearRect(ap, room);
   const c = center(clear);
   const links = doorLinks(ap, room.id);
+  const view = roomView(ap, room);
   return (
     <>
-      <mesh name={`floor-${room.id}`} rotation-x={-Math.PI / 2} position={[cmToScene(c.x), 0, cmToScene(c.z)]} receiveShadow>
-        <planeGeometry args={[cmToScene(rectWidth(clear)), cmToScene(rectDepth(clear))]} />
-        <meshStandardMaterial color="#b89a74" />
-      </mesh>
+      <SceneLighting center={c} spanCm={Math.max(rectWidth(clear), rectDepth(clear))} />
+      <FloorMesh ap={ap} room={room} clear={clear} />
       {/* Невидимая плоскость пола для указателя, в том числе за пределами комнаты. */}
       <mesh
         name="pick-plane"
@@ -329,6 +446,14 @@ function RoomContent() {
         onPointerMove={(e) => drag.getState().pointAt(floorPoint(e), !e.nativeEvent.altKey)}
         // Точка отпускания — окончательная, даже если последние движения объединены браузером.
         onPointerUp={(e) => drag.getState().draft && drag.getState().pointAt(floorPoint(e), !e.nativeEvent.altKey)}
+        // Щелчок по полу комнаты (не перенос, ничего перед полом) — выбор покрытия пола (D-16).
+        onClick={(e) => {
+          if (e.delta > 2 || e.intersections[0]?.object !== e.object || drag.getState().draft) return;
+          const p = floorPoint(e);
+          if (p.x < clear.minX || p.x > clear.maxX || p.z < clear.minZ || p.z > clear.maxZ) return;
+          e.stopPropagation();
+          ui.getState().selectFloor(room.id);
+        }}
       >
         <planeGeometry args={[60, 60]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
@@ -340,9 +465,31 @@ function RoomContent() {
         <Furniture room={room} />
       </Suspense>
       {/* Перенос не вращает камеру (AC-08). */}
-      <OrbitControls makeDefault enabled={!dragging} maxPolarAngle={Math.PI / 2 - 0.05} />
-      <CameraRig room={room} />
+      {/* Пределы приближения — по размеру комнаты (10.3). */}
+      <OrbitControls makeDefault enabled={!dragging} maxPolarAngle={Math.PI / 2 - 0.05} minDistance={view.minDistance} maxDistance={view.maxDistance} />
+      <CameraRig roomId={room.id} />
     </>
+  );
+}
+
+/** Ошибки загрузки моделей с причиной и повтором (13.6); остальная сцена и проект работают. */
+function AssetErrors() {
+  const errors = useAssetStatus((s) => s.errors);
+  const entries = Object.entries(errors);
+  if (!entries.length) return null;
+  return (
+    <div className="scene-errors" role="alert" data-testid="asset-errors">
+      {entries.map(([url, e]) => (
+        <p key={url}>
+          <span>
+            Не удалось загрузить «{e.name}»: {e.message}. Проект и остальные предметы сохранены.
+          </span>
+          <button type="button" onClick={() => useAssetStatus.getState().retry(url)}>
+            Повторить
+          </button>
+        </p>
+      ))}
+    </div>
   );
 }
 
@@ -399,12 +546,10 @@ export function RoomScene() {
         camera={{ position: [...initial], fov: 50 }}
       >
         <color attach="background" args={['#14161a']} />
-        {/* Рассеянный свет усилен на этапе 12: стены, отвёрнутые от солнца, должны показывать отделку. */}
-        <hemisphereLight args={['#ffffff', '#5a534c', 1.4]} />
-        <directionalLight position={[3, 8, 4]} intensity={1.6} castShadow />
         <RoomContent />
       </Canvas>
       <DoorNav />
+      <AssetErrors />
     </div>
   );
 }

@@ -21,10 +21,29 @@ export function SvgRect({ r, t, className, testId }: T & { r: Rect; className: s
   );
 }
 
-export function RoomFloor({ ap, room, t, active, onSelect }: T & { ap: Apartment; room: Room; active: boolean; onSelect?: () => void }) {
+/**
+ * Пол комнаты. Покрытие пола (D-16) — заливка средним цветом материала поверх пола; выбранный пол —
+ * пунктир акцента. onSelect — переход в комнату или выбор пола для покрытия (в зависимости от режима).
+ */
+export function RoomFloor({
+  ap,
+  room,
+  t,
+  active,
+  selected,
+  onSelect,
+}: T & { ap: Apartment; room: Room; active: boolean; selected?: boolean; onSelect?: () => void }) {
+  const r = roomClearRect(ap, room);
+  const finish = getWallMaterial(ap.finishes.floors[room.id] ?? '');
   return (
     <g data-testid={`plan-room-${room.id}`} onPointerDown={onSelect} className={onSelect ? 'plan-room clickable' : 'plan-room'}>
-      <SvgRect r={roomClearRect(ap, room)} t={t} className={active ? 'plan-floor active' : 'plan-floor'} testId={active ? 'plan-floor' : undefined} />
+      <SvgRect r={r} t={t} className={active ? 'plan-floor active' : 'plan-floor'} testId={active ? 'plan-floor' : undefined} />
+      {finish && (
+        <g fill={finish.color} data-material={finish.id} data-testid={`plan-floor-finish-${room.id}`}>
+          <SvgRect r={r} t={t} className="plan-floor-finish" />
+        </g>
+      )}
+      {selected && <SvgRect r={r} t={t} className="plan-floor-selected" testId="plan-floor-selected" />}
     </g>
   );
 }
@@ -177,6 +196,22 @@ export function FurnitureShape(props: T & {
       points={pts(props.t, instanceCorners(props.f, props.item))}
       onPointerDown={props.onPointerDown}
     />
+  );
+}
+
+/**
+ * Ручка поворота у лицевой стороны выбранного предмета (14.4): тянуть — лицевая сторона смотрит
+ * на указатель, привязка 15°, Alt — свободный угол. У настенных предметов ручки нет.
+ */
+export function RotateHandle({ t, item, f, onPointerDown }: T & { item: CatalogItem; f: FurnitureInstance; onPointerDown: (e: PointerEvent<SVGCircleElement>) => void }) {
+  const a = (f.angleDeg * Math.PI) / 180;
+  const at = (d: number) => toScreen(t, { x: f.position.xCm + Math.sin(a) * d, z: f.position.zCm + Math.cos(a) * d });
+  const [edge, knob] = [at(item.size.depthCm / 2), at(item.size.depthCm / 2 + 22 / t.scale)];
+  return (
+    <g data-testid="plan-rotate-handle">
+      <line x1={edge.x} y1={edge.y} x2={knob.x} y2={knob.y} className="plan-rotate-stem" />
+      <circle cx={knob.x} cy={knob.y} r={7} className="plan-rotate-knob" onPointerDown={onPointerDown} />
+    </g>
   );
 }
 

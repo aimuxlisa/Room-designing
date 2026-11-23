@@ -15,6 +15,8 @@ export interface OpeningPatch {
   readonly hinge?: DoorSwing;
   /** Только дверь: комната, куда открывается створка; null — наружу. */
   readonly opensIntoRoomId?: Id | null;
+  /** Отделка полотна двери или рамы окна (D-26). */
+  readonly finishId?: Id;
 }
 
 /** Изменяет один проём; поля, не относящиеся к виду проёма, игнорируются. */

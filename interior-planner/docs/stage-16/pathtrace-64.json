@@ -1,0 +1,9 @@
+{
+  "gpu": "ANGLE (Intel, Intel(R) Graphics (0x0000A7AC) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "viewport": "996×999",
+  "samples": 64,
+  "buildMs": 1716,
+  "totalMs": 218663.39999961853,
+  "cancelled": false,
+  "msPerSample": 3390
+}

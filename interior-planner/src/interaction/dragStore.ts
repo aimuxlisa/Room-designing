@@ -1,12 +1,12 @@
 /**
- * Общий цикл переноса для каталога, плана и 3D (SPEC §11.1). Виды только сообщают точку
+ * Общий цикл переноса и поворота для каталога, плана и 3D (SPEC §11.1). Виды только сообщают точку
  * на полу в см; кандидат проверяется тем же контрактом, что и любое изменение (preview).
- * Временный кандидат в историю не попадает.
+ * Временный кандидат в историю не попадает. В режиме поворота точка задаёт направление лицевой стороны.
  */
 import { create } from 'zustand';
 import type { Command, Proposal } from '../commands/change';
 import { moveFurniture, placeFurniture } from '../commands/furniture';
-import { restingY, type CatalogLookup } from '../domain/furniture';
+import { angleTowards, restingY, snapToWall, type CatalogLookup } from '../domain/furniture';
 import type { Id, Vec3Cm } from '../domain/types';
 import { normalizeDeg, snapCm } from '../geometry/placement';
 import type { Point } from '../geometry/rect';
@@ -20,6 +20,8 @@ export interface Draft {
   /** Существующий предмет или новый id для предмета из каталога. */
   readonly instanceId: Id;
   readonly isNew: boolean;
+  /** Перенос или поворот мышью за ручку (план) или кольцо (3D). */
+  readonly mode: 'move' | 'rotate';
   readonly roomId: Id;
   readonly position: Vec3Cm | null;
   readonly angleDeg: number;
@@ -30,16 +32,20 @@ export interface Draft {
 
 export interface DragState {
   readonly draft: Draft | null;
-  /** Причина последнего отклонённого отпускания (для сообщения). */
+  /** Причина последнего отклонённого изменения (для сообщения). */
   readonly lastIssue: string | null;
   startFromCatalog(itemId: Id): void;
   startMove(instanceId: Id, grab: Point): void;
+  /** Поворот существующего предмета мышью; настенные предметы не поворачиваются. */
+  startRotate(instanceId: Id): void;
   /** null — указатель вне видов. snap=false при зажатом Alt (D-10). */
   pointAt(p: Point | null, snap?: boolean): void;
   rotate(deltaDeg: number): void;
   /** Применить допустимый кандидат; при отказе ничего не меняется (AC-08). */
   finish(): Proposal | null;
   cancel(): void;
+  /** Сообщение об отклонённом изменении вне переноса (стрелки, клавиша R). */
+  report(issue: string | null): void;
 }
 
 let counter = 0;
@@ -62,6 +68,7 @@ function commandFor(d: Draft): Command | null {
 
 export const createDragStore = (project: ProjectStore, activeRoomId: () => Id | null, catalog: CatalogLookup) =>
   create<DragState>()((set, get) => {
+    const isWallItem = (itemId: Id) => catalog(itemId)?.mounting === 'wall';
     const update = (patch: Partial<Draft>) => {
       const d = get().draft;
       if (!d) return;
@@ -76,6 +83,7 @@ export const createDragStore = (project: ProjectStore, activeRoomId: () => Id | 
       const cmd = commandFor(next);
       set({ draft: { ...next, proposal: cmd ? project.getState().preview(cmd) : null } });
     };
+    const existing = (instanceId: Id) => project.getState().history.present.furniture[instanceId];
     return {
       draft: null,
       lastIssue: null,
@@ -83,17 +91,28 @@ export const createDragStore = (project: ProjectStore, activeRoomId: () => Id | 
         const roomId = activeRoomId();
         if (!roomId) return;
         set({
-          draft: { itemId, instanceId: newId(), isNew: true, roomId, position: null, angleDeg: 0, grabOffset: { x: 0, z: 0 }, proposal: null },
+          draft: {
+            itemId,
+            instanceId: newId(),
+            isNew: true,
+            mode: 'move',
+            roomId,
+            position: null,
+            angleDeg: 0,
+            grabOffset: { x: 0, z: 0 },
+            proposal: null,
+          },
         });
       },
       startMove(instanceId, grab) {
-        const f = project.getState().history.present.furniture[instanceId];
+        const f = existing(instanceId);
         if (!f) return;
         set({
           draft: {
             itemId: f.catalogItemId,
             instanceId,
             isNew: false,
+            mode: 'move',
             roomId: f.roomId,
             position: f.position,
             angleDeg: f.angleDeg,
@@ -102,16 +121,47 @@ export const createDragStore = (project: ProjectStore, activeRoomId: () => Id | 
           },
         });
       },
+      startRotate(instanceId) {
+        const f = existing(instanceId);
+        if (!f || isWallItem(f.catalogItemId)) return;
+        set({
+          draft: {
+            itemId: f.catalogItemId,
+            instanceId,
+            isNew: false,
+            mode: 'rotate',
+            roomId: f.roomId,
+            position: f.position,
+            angleDeg: f.angleDeg,
+            grabOffset: { x: 0, z: 0 },
+            proposal: null,
+          },
+        });
+      },
       pointAt(p, snap = true) {
         const d = get().draft;
         if (!d) return;
+        if (d.mode === 'rotate') {
+          // Поворот: лицевая сторона смотрит на указатель; привязка 15°, Alt — свободный угол (D-10).
+          if (!p || !d.position) return;
+          const raw = angleTowards({ x: d.position.xCm, z: d.position.zCm }, p);
+          return update({ angleDeg: normalizeDeg(snap ? snapCm(raw, ROTATE_STEP_DEG) : raw) });
+        }
         if (!p) return update({ position: null });
         const s = (v: number) => (snap ? snapCm(v, SNAP_CM) : v);
-        update({ position: { xCm: s(p.x + d.grabOffset.x), yCm: 0, zCm: s(p.z + d.grabOffset.z) } });
+        const target = { x: p.x + d.grabOffset.x, z: p.z + d.grabOffset.z };
+        const item = catalog(d.itemId);
+        if (item?.mounting === 'wall') {
+          // Настенный предмет прилегает к ближайшей стене; угол задаёт стена, привязка — только вдоль стены.
+          const w = snapToWall(project.getState().history.present, d.roomId, item, target);
+          const point = w.along === 'x' ? { x: s(w.point.x), z: w.point.z } : { x: w.point.x, z: s(w.point.z) };
+          return update({ position: { xCm: point.x, yCm: 0, zCm: point.z }, angleDeg: w.angleDeg });
+        }
+        update({ position: { xCm: s(target.x), yCm: 0, zCm: s(target.z) } });
       },
       rotate(deltaDeg) {
         const d = get().draft;
-        if (d) update({ angleDeg: normalizeDeg(d.angleDeg + deltaDeg) });
+        if (d && !isWallItem(d.itemId)) update({ angleDeg: normalizeDeg(d.angleDeg + deltaDeg) });
       },
       finish() {
         const d = get().draft;
@@ -121,6 +171,7 @@ export const createDragStore = (project: ProjectStore, activeRoomId: () => Id | 
         return result;
       },
       cancel: () => set({ draft: null }),
+      report: (lastIssue) => set({ lastIssue }),
     };
   });
 

@@ -21,6 +21,20 @@ export function editorActionForKey(e: KeyInput): EditorAction | null {
   return null;
 }
 
+/** Стрелки — сдвиг выбранного предмета на 1 см, с Shift — на 10 см (D-10); вверх — к северу (−Z). */
+export function nudgeForKey(e: KeyInput): { dx: number; dz: number } | null {
+  if (e.inEditableField || e.ctrlKey || e.metaKey) return null;
+  const step = e.shiftKey ? 10 : 1;
+  const map: Record<string, [number, number]> = {
+    ArrowLeft: [-step, 0],
+    ArrowRight: [step, 0],
+    ArrowUp: [0, -step],
+    ArrowDown: [0, step],
+  };
+  const d = map[e.code];
+  return d ? { dx: d[0], dz: d[1] } : null;
+}
+
 export function historyActionForKey(e: KeyInput): HistoryAction | null {
   if (e.inEditableField || !(e.ctrlKey || e.metaKey)) return null;
   if (e.code === 'KeyZ') return e.shiftKey ? 'redo' : 'undo';

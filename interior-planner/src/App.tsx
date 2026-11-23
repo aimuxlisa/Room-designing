@@ -48,11 +48,19 @@ function Stepper() {
 function StatusBar() {
   const draft = useDrag((s) => s.draft);
   const lastIssue = useDrag((s) => s.lastIssue);
+  const selected = useUi((s) => s.selectedId);
   const reason = draft?.proposal && !draft.proposal.ok ? draft.proposal.issues[0].message : null;
-  const text = reason ?? (draft ? 'R / Shift+R — поворот на 15°, Alt — без привязки, Esc — отмена' : lastIssue);
+  const hint = !draft
+    ? selected
+      ? 'Выбран предмет: перетащите его, стрелки — 1 см (Shift — 10 см), R / Shift+R — поворот, ручка или кольцо — поворот мышью, Delete — удалить'
+      : 'Перетащите предмет из каталога на план или в 3D'
+    : draft.mode === 'rotate'
+      ? 'Поворот: тяните, шаг 15°, Alt — свободный угол, Esc — отмена'
+      : 'R / Shift+R — поворот на 15°, Alt — без привязки, Esc — отмена';
+  const text = reason ?? (draft ? hint : (lastIssue ?? hint));
   return (
     <footer className={reason || (!draft && lastIssue) ? 'status error' : 'status'} data-testid="status" role="status">
-      {text ?? 'Перетащите предмет из каталога на план или в 3D'}
+      {text}
     </footer>
   );
 }

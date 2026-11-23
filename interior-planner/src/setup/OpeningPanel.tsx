@@ -3,13 +3,16 @@
  * высота, подоконник окна, петля и направление открывания двери. Перенос на другую стену и смена
  * связанной комнаты не предлагаются (D-04). Значения копятся в черновике и применяются кнопкой или Enter.
  */
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useApartment, useSetup, useStores } from '../app/stores';
 import type { OpeningPatch } from '../commands/openings';
 import { LIMITS } from '../domain/limits';
 import { clearOffsetCm, isExteriorWall, offsetFromClearCm } from '../domain/openings';
 import { roomsOfWall } from '../domain/rooms';
 import { parseCmInput } from '../domain/units';
+import { DOOR_FINISHES, WINDOW_FINISHES, openingFinish } from '../catalog/openingFinishes';
+import { ConflictJump } from './ConflictJump';
+import { conflictObjectIds } from './setupStore';
 
 interface NumberFieldProps {
   readonly id: string;
@@ -21,8 +24,14 @@ interface NumberFieldProps {
 
 /** Поле в сантиметрах: текст ведётся локально, чтобы промежуточный ввод (например «1,») не сбрасывался. */
 function NumberField({ id, label, value, onValue, onEnter }: NumberFieldProps) {
-  const [text, setText] = useState(String(Math.round(value)));
-  useEffect(() => setText(String(Math.round(value))), [value]);
+  const shown = String(Math.round(value));
+  const [text, setText] = useState(shown);
+  // Новое действующее значение (применение, отмена Ctrl+Z) заменяет введённый текст.
+  const [prev, setPrev] = useState(shown);
+  if (prev !== shown) {
+    setPrev(shown);
+    setText(shown);
+  }
   return (
     <div className="field">
       <label htmlFor={id}>{label}</label>
@@ -47,6 +56,7 @@ export function OpeningPanel() {
   const draft = useSetup((s) => s.openingDraft);
   const proposal = useSetup((s) => s.openingProposal);
   const lastIssue = useSetup((s) => s.lastIssue);
+  const lastObjectIds = useSetup((s) => s.lastObjectIds);
   const [bad, setBad] = useState<readonly string[]>([]);
   const [nonce, setNonce] = useState(0);
   const o = openingId ? ap.openings[openingId] : undefined;
@@ -117,6 +127,25 @@ export function OpeningPanel() {
           onEnter={apply}
         />
       )}
+      {/* Отделка полотна двери или рамы окна (D-26): через тот же черновик и «Применить». */}
+      <div className="field" role="group" aria-label={o.kind === 'door' ? 'Отделка двери' : 'Рама окна'}>
+        <span>{o.kind === 'door' ? 'Отделка двери' : 'Рама окна'}</span>
+        <div className="swatches">
+          {(o.kind === 'door' ? DOOR_FINISHES : WINDOW_FINISHES).map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              className="swatch"
+              title={f.name}
+              aria-label={f.name}
+              aria-pressed={(draft.finishId ?? openingFinish(o).id) === f.id}
+              data-testid={`opening-finish-${f.id}`}
+              style={{ background: f.color }}
+              onClick={() => edit({ finishId: f.id })}
+            />
+          ))}
+        </div>
+      </div>
       {o.kind === 'door' && (
         <>
           <div className="field" role="group" aria-label="Петля">
@@ -147,6 +176,7 @@ export function OpeningPanel() {
           {issue}
         </p>
       )}
+      {issue && !bad.length && <ConflictJump objectIds={conflictObjectIds({ proposal: null, openingProposal: proposal, lastObjectIds })} />}
       <div className="actions">
         <button type="button" className="primary" disabled={bad.length > 0 || !proposal?.ok} onClick={apply}>
           Применить

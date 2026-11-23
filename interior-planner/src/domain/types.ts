@@ -61,6 +61,8 @@ interface OpeningBase {
   readonly offsetCm: number;
   readonly widthCm: number;
   readonly heightCm: number;
+  /** Отделка полотна двери или рамы окна (D-26); нет — по умолчанию. */
+  readonly finishId?: Id;
 }
 
 export interface DoorOpening extends OpeningBase {
@@ -146,9 +148,23 @@ export interface CatalogItem {
   readonly colliders: readonly ColliderBox[];
   readonly license: string;
   readonly source: string;
+  /** Поворот модели вокруг вертикали, чтобы лицевая сторона смотрела в +Z (модель в файле повёрнута иначе). */
+  readonly modelYawDeg?: number;
+  /** Настенный предмет может закрывать окно (шторы, тюль) — D-24. */
+  readonly overOpenings?: boolean;
 }
 
-export type FinishKind = 'paint' | 'wallpaper' | 'laminate' | 'linoleum' | 'carpet';
+export type FinishKind =
+  | 'paint'
+  | 'wallpaper'
+  | 'tile'
+  | 'plaster'
+  | 'brick'
+  | 'laminate'
+  | 'parquet'
+  | 'stone'
+  | 'linoleum'
+  | 'carpet';
 
 export interface MaterialDefinition {
   readonly id: Id;

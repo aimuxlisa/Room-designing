@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getCatalogItem } from '../../src/catalog/techCatalog';
+import { getCatalogItem } from '../../src/catalog/catalog';
 import { createValidators } from '../../src/domain/validators';
 import { footprintCorners } from '../../src/geometry/placement';
 import { createDragStore } from '../../src/interaction/dragStore';

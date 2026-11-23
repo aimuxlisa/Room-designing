@@ -128,7 +128,12 @@ export const validatePassageGraph: Validator = (ap) => {
   if (entrances.length === 0) return [issue('no-entrance', 'В квартире нет входной двери', ap.id)];
   const seen = new Set(entrances);
   const queue = [...entrances];
-  while (queue.length) for (const n of links.get(queue.pop()!) ?? []) if (!seen.has(n)) (seen.add(n), queue.push(n));
+  while (queue.length)
+    for (const n of links.get(queue.pop()!) ?? [])
+      if (!seen.has(n)) {
+        seen.add(n);
+        queue.push(n);
+      }
   return rooms
     .filter((r) => !seen.has(r.id))
     .map((r) => issue('room-unreachable', `В помещение «${r.name}» нет прохода`, r.id));

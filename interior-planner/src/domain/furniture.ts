@@ -18,6 +18,26 @@ type Placed = Pick<FurnitureInstance, 'position' | 'angleDeg'>;
 export const instanceCorners = (f: Placed, item: CatalogItem): Point[] =>
   footprintCorners({ x: f.position.xCm, z: f.position.zCm }, item.size.widthCm, item.size.depthCm, f.angleDeg);
 
+/** Лицевая сторона предмета при угле angleDeg — локальная +Z после поворота: (sin θ, cos θ). */
+export const angleTowards = (from: Point, to: Point): number => normalizeDeg((Math.atan2(to.x - from.x, to.z - from.z) * 180) / Math.PI);
+
+/** Угол, при котором задняя сторона (локальная −Z) обращена к стене комнаты на этой стороне. */
+const WALL_ANGLE: Record<(typeof SIDES)[number], number> = { minZ: 0, maxX: 270, maxZ: 180, minX: 90 };
+
+/**
+ * Настенный предмет (SPEC §11.1): у ближайшей к точке стены комнаты, задней стороной вплотную;
+ * угол задаёт стена, пользователь его не поворачивает. Возвращает центр и угол; вдоль стены — свободно.
+ */
+export function snapToWall(ap: Apartment, roomId: Id, item: CatalogItem, p: Point): { point: Point; angleDeg: number; along: 'x' | 'z' } {
+  const r = roomClearRect(ap, ap.rooms[roomId]);
+  const dist = { minX: p.x - r.minX, maxX: r.maxX - p.x, minZ: p.z - r.minZ, maxZ: r.maxZ - p.z };
+  const side = SIDES.reduce((a, b) => (Math.abs(dist[b]) < Math.abs(dist[a]) ? b : a));
+  const hd = item.size.depthCm / 2;
+  const point =
+    side === 'minX' ? { x: r.minX + hd, z: p.z } : side === 'maxX' ? { x: r.maxX - hd, z: p.z } : side === 'minZ' ? { x: p.x, z: r.minZ + hd } : { x: p.x, z: r.maxZ - hd };
+  return { point, angleDeg: WALL_ANGLE[side], along: side === 'minX' || side === 'maxX' ? 'z' : 'x' };
+}
+
 export interface ColliderShape {
   readonly polygon: Polygon;
   /** Нижняя и верхняя отметка над полом, см. */
@@ -101,18 +121,17 @@ export const catalogPresenceValidator =
       .filter((f) => !getItem(f.catalogItemId))
       .map((f) => issue('catalog-missing', `Предмет ${f.id}: нет в каталоге`, f.id));
 
-/** 5.4: все объёмы целиком в чистом прямоугольнике комнаты, с учётом поворота. */
+/** 5.4: все объёмы целиком в чистом прямоугольнике комнаты, с учётом поворота, и не выше потолка. */
 export const furnitureInRoomValidator =
   (getItem: CatalogLookup): Validator =>
   (ap) =>
-    entries(ap, getItem)
-      .filter(({ f, shapes }) => {
-        const room = rectPolygon(roomClearRect(ap, ap.rooms[f.roomId]));
-        return shapes.some((s) => !polygonInside(s.polygon, room) || s.top > ap.ceilingCm + EPS_CM);
-      })
-      .map(({ f, item }) =>
-        issue('out-of-room', `В комнате «${roomName(ap, f.roomId)}» ${lower(item.name)} пересекает стену`, f.id, f.roomId),
-      );
+    entries(ap, getItem).flatMap(({ f, item, shapes }) => {
+      const room = rectPolygon(roomClearRect(ap, ap.rooms[f.roomId]));
+      const where = `В комнате «${roomName(ap, f.roomId)}» ${lower(item.name)}`;
+      if (shapes.some((s) => !polygonInside(s.polygon, room))) return [issue('out-of-room', `${where} пересекает стену`, f.id, f.roomId)];
+      if (shapes.some((s) => s.top > ap.ceilingCm + EPS_CM)) return [issue('above-ceiling', `${where} выше потолка`, f.id, f.roomId)];
+      return [];
+    });
 
 /** 5.4–5.5: пересечение предметов по объёмам; ковёр под мебелью допустим, ковёр на ковре — нет. */
 export const furnitureCollisionValidator =
@@ -126,6 +145,8 @@ export const furnitureCollisionValidator =
         if (a.f.roomId !== b.f.roomId) continue;
         const coverings = [a, b].filter((e) => e.item.layer === 'floor-covering').length;
         if (coverings === 1) continue;
+        // Текстиль на окне (шторы, тюль) висит слоями на одном карнизе — друг с другом не сталкивается (D-24).
+        if (a.item.overOpenings && b.item.overOpenings) continue;
         const hit =
           coverings === 2
             ? a.shapes.some((s) => b.shapes.some((t) => polygonsOverlap(s.polygon, t.polygon)))
@@ -201,7 +222,9 @@ export const mountingValidator =
             const [i0, i1] = [Math.min(...along), Math.max(...along)];
             const [b, t] = [Math.min(...shapes.map((s) => s.bottom)), topOf(shapes)];
             for (const o of Object.values(ap.openings).filter((x) => x.wallId === wall.id))
-              if (intervalsOverlap(i0, i1, ...openingSpan(o)) && intervalsOverlap(b, t, ...openingVerticalRange(o)))
+              // Шторы и тюль висят поверх окна (D-24); дверь не закрывает ни один предмет.
+              if (item.overOpenings && o.kind === 'window') continue;
+              else if (intervalsOverlap(i0, i1, ...openingSpan(o)) && intervalsOverlap(b, t, ...openingVerticalRange(o)))
                 out.push(issue('mount-over-opening', `${name} закрывает ${o.kind === 'door' ? 'дверь' : 'окно'}`, f.id, o.id));
           }
           break;

@@ -10,7 +10,8 @@ import { wallAxis } from '../domain/openings';
 import type { Point } from '../geometry/rect';
 import { snapCm } from '../geometry/placement';
 import { roomsOfWall } from '../domain/rooms';
-import { FurnitureShape, OpeningLabel, OpeningSymbol, RoomCaption, RoomDimensions, RoomFloor, WallFinishes, Walls } from './PlanLayers';
+import { FurnitureShape, OpeningLabel, OpeningSymbol, RoomCaption, RoomDimensions, RoomFloor, RotateHandle, WallFinishes, Walls } from './PlanLayers';
+import { conflictObjectIds } from '../setup/setupStore';
 import { contentRect } from './planContent';
 import { fitTransform, panBy, toWorld, zoomAt, type ViewTransform } from './viewTransform';
 
@@ -44,15 +45,24 @@ export function PlanView({ mode = 'interior' }: { mode?: 'setup' | 'interior' })
   const scope = mode === 'setup' ? 'apartment' : uiScope;
   const selectedWall = useSetup((s) => s.wallId);
   const selectedOpening = useSetup((s) => s.openingId);
+  const openingProposal = useSetup((s) => s.openingProposal);
+  const lastObjectIds = useSetup((s) => s.lastObjectIds);
   const proposal = useSetup((s) => s.proposal);
   const ap = mode === 'setup' && proposal?.ok ? proposal.candidate : base;
   const wallDrag = useRef<{ wallId: string; start: Point; vertical: boolean } | null>(null);
   const selectedId = useUi((s) => s.selectedId);
   const selectedSurface = useUi((s) => s.selectedSurface);
+  const selectedFloor = useUi((s) => s.selectedFloor);
   const ref = useRef<HTMLDivElement>(null);
   const size = useSize(ref);
-  /** Пользовательский вид; null — вписанный. Сбрасывается при смене комнаты или режима. */
-  const [custom, setCustom] = useState<ViewTransform | null>(null);
+  /**
+   * Пользовательский вид; null — вписанный. Привязан к комнате и режиму плана: при их смене
+   * просто перестаёт действовать, без эффекта сброса.
+   */
+  const viewKey = `${roomId ?? ''}|${scope}`;
+  const [customView, setCustomView] = useState<{ key: string; t: ViewTransform } | null>(null);
+  const custom = customView?.key === viewKey ? customView.t : null;
+  const setCustom = (v: ViewTransform | null) => setCustomView(v && { key: viewKey, t: v });
   const pan = useRef<{ x: number; y: number } | null>(null);
 
   const active = roomId ? ap.rooms[roomId] : undefined;
@@ -61,20 +71,21 @@ export function PlanView({ mode = 'interior' }: { mode?: 'setup' | 'interior' })
   const baseRooms = scope === 'apartment' ? Object.values(base.rooms) : base.rooms[roomId ?? ''] ? [base.rooms[roomId!]] : [];
   const fit = baseRooms.length ? fitTransform(contentRect(base, baseRooms), size.w, size.h) : null;
   const t = custom ?? fit;
-  const tRef = useRef(t);
-  tRef.current = t;
-
-  useEffect(() => setCustom(null), [roomId, scope]);
+  // Нативный слушатель колеса регистрируется один раз и читает актуальный вид через ref (обновляется после рендера).
+  const viewRef = useRef({ t, key: viewKey });
+  useLayoutEffect(() => {
+    viewRef.current = { t, key: viewKey };
+  });
 
   // Колесо — нативный слушатель, чтобы отменить прокрутку страницы.
   useEffect(() => {
     const el = ref.current!;
     const onWheel = (e: WheelEvent) => {
-      const cur = tRef.current;
+      const { t: cur, key } = viewRef.current;
       if (!cur) return;
       e.preventDefault();
       const box = el.getBoundingClientRect();
-      setCustom(zoomAt(cur, { x: e.clientX - box.left, y: e.clientY - box.top }, Math.exp(-e.deltaY * 0.0015)));
+      setCustomView({ key, t: zoomAt(cur, { x: e.clientX - box.left, y: e.clientY - box.top }, Math.exp(-e.deltaY * 0.0015)) });
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
@@ -90,7 +101,11 @@ export function PlanView({ mode = 'interior' }: { mode?: 'setup' | 'interior' })
   const roomIds = new Set(rooms.map((r) => r.id));
   const furniture = Object.values(ap.furniture).filter((f) => roomIds.has(f.roomId));
   const draftItem = draft?.position ? catalog(draft.itemId) : undefined;
+  const selectedFurniture = selectedId ? ap.furniture[selectedId] : undefined;
+  const selectedItem = selectedFurniture ? catalog(selectedFurniture.catalogItemId) : undefined;
   const selectedChain = new Set(selectedWall && base.walls[selectedWall] ? collinearChain(base, selectedWall).map((w) => w.id) : []);
+  // Предметы, мешающие изменению квартиры, — красным на плане настройки, в том числе в других комнатах (15.4).
+  const conflicts = new Set(mode === 'setup' ? conflictObjectIds({ proposal, openingProposal, lastObjectIds }) : []);
 
   return (
     <div className="plan-wrap">
@@ -108,6 +123,13 @@ export function PlanView({ mode = 'interior' }: { mode?: 'setup' | 'interior' })
         <button type="button" onClick={() => setCustom(null)} disabled={!custom}>
           Вписать
         </button>
+        {mode === 'interior' && (
+          // Геометрия в интерьере заблокирована; размеры, проёмы и потолок — на шаге «Квартира» (15.1).
+          // Мебель и отделка при возврате сохраняются (15.2).
+          <button type="button" className="plan-to-setup" data-testid="to-setup" onClick={() => ui.getState().setStage('setup')}>
+            Изменить размеры и проёмы
+          </button>
+        )}
       </div>
       <div
         ref={ref}
@@ -159,7 +181,17 @@ export function PlanView({ mode = 'interior' }: { mode?: 'setup' | 'interior' })
                 room={r}
                 t={t}
                 active={r.id === roomId}
-                onSelect={mode === 'interior' && scope === 'apartment' && r.id !== roomId ? () => ui.getState().setActiveRoom(r.id) : undefined}
+                selected={mode === 'interior' && selectedFloor === r.id}
+                onSelect={
+                  mode !== 'interior'
+                    ? undefined
+                    : r.id !== roomId
+                      ? scope === 'apartment'
+                        ? () => ui.getState().setActiveRoom(r.id)
+                        : undefined
+                      : // Пол активной комнаты — выбор покрытия (D-16), если не идёт перенос.
+                        () => !draft && ui.getState().selectFloor(r.id)
+                }
               />
             ))}
             <Walls
@@ -206,7 +238,7 @@ export function PlanView({ mode = 'interior' }: { mode?: 'setup' | 'interior' })
                   item={item}
                   f={f}
                   testId={`plan-item-${f.id}`}
-                  className={f.id === selectedId ? 'plan-item selected' : 'plan-item'}
+                  className={conflicts.has(f.id) ? 'plan-item conflict' : f.id === selectedId ? 'plan-item selected' : 'plan-item'}
                   onPointerDown={(e) => {
                     if (mode === 'setup' || e.button !== 0 || f.roomId !== roomId) return;
                     e.stopPropagation();
@@ -216,6 +248,18 @@ export function PlanView({ mode = 'interior' }: { mode?: 'setup' | 'interior' })
                 />
               );
             })}
+            {mode === 'interior' && !draft && selectedFurniture && selectedItem && selectedItem.mounting !== 'wall' && selectedFurniture.roomId === roomId && (
+              <RotateHandle
+                t={t}
+                item={selectedItem}
+                f={selectedFurniture}
+                onPointerDown={(e) => {
+                  if (e.button !== 0) return;
+                  e.stopPropagation();
+                  drag.getState().startRotate(selectedFurniture.id);
+                }}
+              />
+            )}
             {draft?.position && draftItem && (
               <FurnitureShape
                 t={t}

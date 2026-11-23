@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { getWallMaterial, wallMaterials } from '../../src/catalog/materials';
+import { floorMaterials, getWallMaterial, wallMaterials } from '../../src/catalog/materials';
 import { setWallFinish } from '../../src/commands/finishes';
 import { moveWall } from '../../src/commands/walls';
 import { surfaceKey } from '../../src/domain/rooms';
@@ -27,18 +27,20 @@ describe('12.1 выбор поверхности: сторона общей ст
 });
 
 describe('12.2 материалы', () => {
-  it('8 красок и 6 тканей Poly Haven: размер повтора, источник CC0, файл текстуры на месте; id уникальны', () => {
+  it('стены: 8 красок, 9 тканей, 9 плиток/штукатурок/кирпичей; пол: 22 покрытия; текстуры WebP на месте, id уникальны', () => {
     expect(wallMaterials.filter((m) => m.kind === 'paint')).toHaveLength(8);
-    const wallpapers = wallMaterials.filter((x) => x.kind === 'wallpaper');
-    expect(wallpapers).toHaveLength(6);
-    for (const m of wallpapers) {
+    expect(wallMaterials.filter((x) => x.kind === 'wallpaper')).toHaveLength(9);
+    expect(wallMaterials.filter((x) => ['tile', 'plaster', 'brick'].includes(x.kind))).toHaveLength(9);
+    expect(floorMaterials).toHaveLength(22);
+    for (const m of [...wallMaterials, ...floorMaterials].filter((x) => x.textureUrl)) {
       expect(m.tileSizeCm!.widthCm).toBeGreaterThan(20);
       expect(m.tileSizeCm!.heightCm).toBeGreaterThan(20);
       expect(m.source).toMatch(/^https:\/\/polyhaven\.com\/a\/\w+ \(CC0\)$/);
-      expect(m.textureUrl).toMatch(/^\/textures\/\w+\.jpg$/);
+      expect(m.textureUrl).toMatch(/^\/textures\/\w+\.webp$/);
       expect(existsSync(fileURLToPath(new URL(`../../public${m.textureUrl}`, import.meta.url)))).toBe(true);
     }
-    expect(new Set(wallMaterials.map((m) => m.id)).size).toBe(wallMaterials.length);
+    const ids = [...wallMaterials, ...floorMaterials].map((m) => m.id);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });
 

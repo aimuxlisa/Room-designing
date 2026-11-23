@@ -29,6 +29,8 @@ export interface UiState {
   readonly selectedId: Id | null;
   /** Выбранная внутренняя поверхность стены для отделки (этап 12); исключает выбор предмета. */
   readonly selectedSurface: WallSurfaceRef | null;
+  /** Выбранный пол комнаты для покрытия (D-16); исключает выбор предмета и стены. */
+  readonly selectedFloor: Id | null;
   readonly camera: CameraState | null;
   setStage(stage: EditorStage): void;
   setStart(patch: Partial<StartInput>): void;
@@ -38,6 +40,7 @@ export interface UiState {
   setActiveRoom(roomId: Id | null): void;
   select(id: Id | null): void;
   selectSurface(surface: WallSurfaceRef | null): void;
+  selectFloor(roomId: Id | null): void;
   setCamera(camera: CameraState): void;
 }
 
@@ -50,13 +53,16 @@ export const createUiStore = () =>
     activeRoomId: null,
     selectedId: null,
     selectedSurface: null,
+    selectedFloor: null,
     camera: null,
     setStage: (stage) => set({ stage }),
     setStart: (patch) => set((s) => ({ start: { ...s.start, ...patch } })),
     setTemplateId: (templateId) => set({ templateId }),
     setPlanScope: (planScope) => set({ planScope }),
-    setActiveRoom: (activeRoomId) => set({ activeRoomId, selectedId: null, selectedSurface: null }),
-    select: (selectedId) => set(selectedId ? { selectedId, selectedSurface: null } : { selectedId }),
-    selectSurface: (selectedSurface) => set(selectedSurface ? { selectedSurface, selectedId: null } : { selectedSurface }),
+    setActiveRoom: (activeRoomId) => set({ activeRoomId, selectedId: null, selectedSurface: null, selectedFloor: null }),
+    select: (selectedId) => set(selectedId ? { selectedId, selectedSurface: null, selectedFloor: null } : { selectedId }),
+    selectSurface: (selectedSurface) =>
+      set(selectedSurface ? { selectedSurface, selectedId: null, selectedFloor: null } : { selectedSurface }),
+    selectFloor: (selectedFloor) => set(selectedFloor ? { selectedFloor, selectedId: null, selectedSurface: null } : { selectedFloor }),
     setCamera: (camera) => set({ camera }),
   }));

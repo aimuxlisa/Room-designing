@@ -23,7 +23,9 @@ import { formatCm, formatM2, parseCmInput } from '../domain/units';
 import { rectDepth, rectWidth } from '../geometry/rect';
 import { PlanView } from '../plan2d/PlanView';
 import { areaChange, roomChanges } from './changes';
+import { ConflictJump } from './ConflictJump';
 import { OpeningPanel } from './OpeningPanel';
+import { conflictObjectIds } from './setupStore';
 
 const issueOf = (p: Proposal | null) => (p && !p.ok ? p.issues[0].message : null);
 
@@ -40,10 +42,14 @@ function RoomSizeField({ ap, wallId, room }: { ap: Apartment; wallId: string; ro
   const { setup } = useStores();
   const deltaCm = useSetup((s) => s.deltaCm);
   const { label, value } = roomSize(ap, wallId, room);
-  const [text, setText] = useState(String(Math.round(value)));
-  useEffect(() => {
-    if (deltaCm === 0) setText(String(Math.round(value)));
-  }, [deltaCm, value]);
+  const shown = String(Math.round(value));
+  const [text, setText] = useState(shown);
+  // Без изменения (сдвиг 0) поле показывает действующий размер: после применения, отмены или переноса мышью.
+  const [prev, setPrev] = useState({ shown, deltaCm });
+  if (prev.shown !== shown || prev.deltaCm !== deltaCm) {
+    setPrev({ shown, deltaCm });
+    if (deltaCm === 0) setText(shown);
+  }
   const id = `size-${room.id}`;
   return (
     <div className="field">
@@ -75,6 +81,7 @@ function WallPanel() {
   const wallId = useSetup((s) => s.wallId);
   const proposal = useSetup((s) => s.proposal);
   const lastIssue = useSetup((s) => s.lastIssue);
+  const lastObjectIds = useSetup((s) => s.lastObjectIds);
   const wall = wallId ? ap.walls[wallId] : undefined;
   if (!wall)
     return <p className="hint">Нажмите на стену на плане, чтобы изменить размеры. Стену можно и перетащить мышью (Alt — шаг 1 см).</p>;
@@ -117,6 +124,7 @@ function WallPanel() {
           {issue}
         </p>
       )}
+      {issue && <ConflictJump objectIds={conflictObjectIds({ proposal, openingProposal: null, lastObjectIds })} />}
       <div className="actions">
         <button type="button" className="primary" disabled={!proposal?.ok} onClick={() => setup.getState().apply()}>
           Применить
@@ -130,14 +138,19 @@ function WallPanel() {
 }
 
 function CeilingPanel() {
-  const { project } = useStores();
+  const { project, catalog } = useStores();
   const ap = useApartment();
   const [text, setText] = useState(String(ap.ceilingCm));
-  useEffect(() => setText(String(ap.ceilingCm)), [ap.ceilingCm]);
+  // Новая действующая высота (применение, отмена) заменяет введённый текст.
+  const [prevCeiling, setPrevCeiling] = useState(ap.ceilingCm);
+  if (prevCeiling !== ap.ceilingCm) {
+    setPrevCeiling(ap.ceilingCm);
+    setText(String(ap.ceilingCm));
+  }
   const cm = parseCmInput(text);
-  const preview = cm === null || cm === ap.ceilingCm ? null : project.getState().preview(setCeilingHeight(cm));
+  const preview = cm === null || cm === ap.ceilingCm ? null : project.getState().preview(setCeilingHeight(cm, catalog));
   const error = cm === null ? 'Введите целое число сантиметров' : issueOf(preview);
-  const apply = () => cm !== null && preview?.ok && project.getState().execute(setCeilingHeight(cm));
+  const apply = () => cm !== null && preview?.ok && project.getState().execute(setCeilingHeight(cm, catalog));
   return (
     <div className="panel">
       <div className="field">
@@ -158,6 +171,7 @@ function CeilingPanel() {
           {error}
         </p>
       )}
+      {preview && !preview.ok && <ConflictJump objectIds={preview.issues.flatMap((i) => i.objectIds)} />}
       <button type="button" disabled={!preview?.ok} onClick={apply}>
         Применить высоту
       </button>

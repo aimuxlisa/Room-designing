@@ -29,7 +29,13 @@ export function createStores(initial: Apartment, activeRoomId: string | null, ca
   ui.getState().setActiveRoom(activeRoomId);
   const project = createProjectStore(initial, createValidators(catalog));
   const drag = createDragStore(project, () => ui.getState().activeRoomId, catalog);
-  const setup = createSetupStore(project);
+  const setup = createSetupStore(project, catalog);
+  // Отмена, повтор и загрузка меняют действующую квартиру: черновики настройки построены на старой — сбросить (15.6).
+  project.subscribe((s, prev) => {
+    if (s.history.present === prev.history.present) return;
+    setup.getState().reset();
+    setup.getState().resetOpening();
+  });
   return { project, ui, drag, setup, catalog };
 }
 
