@@ -12,6 +12,14 @@ export interface AssetStatusState {
   retry(url: string): void;
 }
 
+/** Понятная причина по технической строке загрузчика (18.1); исходная строка остаётся в подсказке. */
+export function assetErrorReason(message: string): string {
+  if (/\b404\b|Not Found/i.test(message)) return 'файл модели не найден на сервере';
+  if (/Failed to fetch|NetworkError|net::/i.test(message)) return 'нет связи с сервером';
+  if (/responded with 5\d\d/.test(message)) return 'сервер не отдал файл модели';
+  return 'файл модели повреждён или не читается';
+}
+
 export const useAssetStatus = create<AssetStatusState>()((set, get) => ({
   errors: {},
   attempts: {},

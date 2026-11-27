@@ -1,0 +1,162 @@
+{
+  "date": "2026-11-27",
+  "machine": {
+    "cpu": "Intel(R) Core(TM) 7 150U",
+    "ramGB": 16,
+    "gpu": "ANGLE (Intel, Intel(R) Graphics (0x0000A7AC) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "os": "Windows_NT 10.0.26200"
+  },
+  "conditions": "Chrome (Playwright), 1920×1080, production-сборка с хуками замеров (VITE_PROBE), холодный кеш на каждый прогон, 3 прогона, медиана",
+  "thresholds": {
+    "fps": "≥ 60",
+    "p95FrameMs": "≤ 20",
+    "sceneReadyS": "≤ 3",
+    "modelAppearS": "≤ 2"
+  },
+  "median": {
+    "appReadyMs": 212,
+    "interiorReadyMs": 186,
+    "furnishedReadyMs": 893,
+    "modelAppearMs": 300,
+    "fps": 60,
+    "p95FrameMs": 16.9,
+    "dragFps": 60,
+    "dragP95FrameMs": 16.9,
+    "dragHandlerP95Ms": 2.7,
+    "roomSwitchMedianMs": 87
+  },
+  "runs": [
+    {
+      "gpu": "ANGLE (Intel, Intel(R) Graphics (0x0000A7AC) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "items": 21,
+      "appReadyMs": 212,
+      "interiorReadyMs": 196,
+      "furnishedReadyMs": 1813,
+      "modelAppearMs": 279,
+      "modelDropTotalMs": 338,
+      "frames": {
+        "fps": 59.7,
+        "p95FrameMs": 16.9,
+        "maxFrameMs": 66.6
+      },
+      "dragHandlerMs": {
+        "median": 1.2,
+        "p95": 4.4,
+        "max": 4.7
+      },
+      "dragFrames": {
+        "fps": 57.7,
+        "p95FrameMs": 16.9
+      },
+      "roomSwitch": {
+        "median": 87,
+        "p95": 134,
+        "max": 139
+      },
+      "memBefore": {
+        "heapMB": 48,
+        "geometries": 75,
+        "textures": 61,
+        "programs": 18,
+        "calls": 91,
+        "triangles": 434198
+      },
+      "memAfter": {
+        "heapMB": 34,
+        "geometries": 65,
+        "textures": 61,
+        "programs": 17,
+        "calls": 167,
+        "triangles": 867768
+      }
+    },
+    {
+      "gpu": "ANGLE (Intel, Intel(R) Graphics (0x0000A7AC) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "items": 21,
+      "appReadyMs": 200,
+      "interiorReadyMs": 186,
+      "furnishedReadyMs": 759,
+      "modelAppearMs": 302,
+      "modelDropTotalMs": 571,
+      "frames": {
+        "fps": 60,
+        "p95FrameMs": 16.9,
+        "maxFrameMs": 33.4
+      },
+      "dragHandlerMs": {
+        "median": 1.1,
+        "p95": 2.7,
+        "max": 5.2
+      },
+      "dragFrames": {
+        "fps": 60,
+        "p95FrameMs": 16.8
+      },
+      "roomSwitch": {
+        "median": 99,
+        "p95": 134,
+        "max": 153
+      },
+      "memBefore": {
+        "heapMB": 40,
+        "geometries": 75,
+        "textures": 61,
+        "programs": 18,
+        "calls": 4,
+        "triangles": 8
+      },
+      "memAfter": {
+        "heapMB": 33,
+        "geometries": 65,
+        "textures": 61,
+        "programs": 17,
+        "calls": 167,
+        "triangles": 867768
+      }
+    },
+    {
+      "gpu": "ANGLE (Intel, Intel(R) Graphics (0x0000A7AC) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "items": 21,
+      "appReadyMs": 213,
+      "interiorReadyMs": 170,
+      "furnishedReadyMs": 893,
+      "modelAppearMs": 300,
+      "modelDropTotalMs": 553,
+      "frames": {
+        "fps": 60.2,
+        "p95FrameMs": 16.8,
+        "maxFrameMs": 17.4
+      },
+      "dragHandlerMs": {
+        "median": 1,
+        "p95": 2.3,
+        "max": 3.3
+      },
+      "dragFrames": {
+        "fps": 60,
+        "p95FrameMs": 16.9
+      },
+      "roomSwitch": {
+        "median": 81,
+        "p95": 135,
+        "max": 155
+      },
+      "memBefore": {
+        "heapMB": 40,
+        "geometries": 75,
+        "textures": 61,
+        "programs": 18,
+        "calls": 4,
+        "triangles": 8
+      },
+      "memAfter": {
+        "heapMB": 34,
+        "geometries": 65,
+        "textures": 61,
+        "programs": 17,
+        "calls": 167,
+        "triangles": 867768
+      }
+    }
+  ]
+}

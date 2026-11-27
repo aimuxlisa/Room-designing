@@ -51,6 +51,8 @@ function RoomSizeField({ ap, wallId, room }: { ap: Apartment; wallId: string; ro
     if (deltaCm === 0) setText(shown);
   }
   const id = `size-${room.id}`;
+  const cm = parseCmInput(text);
+  const invalid = cm === null || cm <= 0;
   return (
     <div className="field">
       <label htmlFor={id}>
@@ -62,15 +64,22 @@ function RoomSizeField({ ap, wallId, room }: { ap: Apartment; wallId: string; ro
         value={text}
         onChange={(e) => {
           setText(e.target.value);
-          const cm = parseCmInput(e.target.value);
-          const delta = cm === null ? null : deltaForRoomSize(ap, wallId, room, cm);
+          const next = parseCmInput(e.target.value);
+          // Нечисловой, нулевой и отрицательный размер не предлагает изменения (18.1).
+          const delta = next === null || next <= 0 ? null : deltaForRoomSize(ap, wallId, room, next);
           setup.getState().setDelta(delta === null ? 0 : Math.round(delta));
         }}
         onKeyDown={(e) => {
           if (e.key === 'Enter') setup.getState().apply();
           if (e.key === 'Escape') setup.getState().reset();
         }}
+        aria-invalid={invalid}
       />
+      {invalid && (
+        <p className="hint error" role="alert" data-testid="size-input-error">
+          Введите размер целым числом сантиметров больше 0, например 350
+        </p>
+      )}
     </div>
   );
 }

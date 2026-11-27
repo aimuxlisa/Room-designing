@@ -60,6 +60,9 @@ body { background: var(--bg); color: var(--text); font: 14px/1.4 var(--font); }
 .catalog-filter button[aria-pressed='true'] { border-color: var(--accent); color: var(--accent); }
 .catalog-filter button:disabled { opacity: 0.5; cursor: default; }
 .catalog-group h3 { font-size: 12px; color: var(--text-muted); font-weight: 500; margin: 10px 0 6px; }
+.scene-unavailable { position: absolute; inset: 0; display: grid; align-content: center; gap: 8px; padding: 24px; max-width: 520px; margin: 0 auto; }
+.scene-unavailable h2 { margin: 0; font-size: 18px; }
+.scene-unavailable p { margin: 0; line-height: 1.5; }
 .scene-errors { position: absolute; bottom: 8px; left: 8px; right: 8px; display: grid; gap: 6px; z-index: 1; }
 .scene-errors p { margin: 0; display: flex; gap: 8px; align-items: center; background: var(--surface-2); border: 1px solid var(--danger); color: var(--text); border-radius: var(--radius); padding: 6px 10px; font-size: 13px; }
 .scene-errors button { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 2px 8px; font: inherit; cursor: pointer; }

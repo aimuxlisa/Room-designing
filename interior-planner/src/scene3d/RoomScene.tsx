@@ -22,11 +22,13 @@ import { cmToScene, sceneToCm } from '../domain/units';
 import { wallBlocks, wallSpanRect } from '../domain/wallBlocks';
 import { rotatePoint } from '../geometry/placement';
 import { rectDepth, rectWidth, type Point, type Rect } from '../geometry/rect';
-import { useAssetStatus } from './assetStatus';
+import { assetErrorReason, useAssetStatus } from './assetStatus';
 import { FurnitureModel } from './FurnitureModel';
 import { roomView } from './roomView';
 import { SceneLighting } from './SceneLighting';
 import { openingFinish } from '../catalog/openingFinishes';
+import { PROBE } from '../app/probe';
+import { SceneBoundary, SceneUnavailable, webglAvailable } from './SceneGuard';
 
 const center = (r: Rect) => ({ x: (r.minX + r.maxX) / 2, z: (r.minZ + r.maxZ) / 2 });
 const FLOOR = new Plane(new Vector3(0, 1, 0), 0);
@@ -401,7 +403,7 @@ function CameraRig({ roomId }: { roomId: string }) {
     controls.target.set(...v.target);
     controls.update();
     // Для браузерных проверок: вид комнаты установлен (камера и цель на месте).
-    if (import.meta.env.DEV) Object.assign(window, { __view: roomId, __controls: controls });
+    if (PROBE) Object.assign(window, { __view: roomId, __controls: controls });
   }, [roomId, controls, camera, project]);
   return null;
 }
@@ -481,8 +483,8 @@ function AssetErrors() {
     <div className="scene-errors" role="alert" data-testid="asset-errors">
       {entries.map(([url, e]) => (
         <p key={url}>
-          <span>
-            Не удалось загрузить «{e.name}»: {e.message}. Проект и остальные предметы сохранены.
+          <span title={e.message}>
+            Не удалось загрузить «{e.name}»: {assetErrorReason(e.message)}. Проект и остальные предметы сохранены.
           </span>
           <button type="button" onClick={() => useAssetStatus.getState().retry(url)}>
             Повторить
@@ -517,21 +519,38 @@ function DoorNav() {
   );
 }
 
+/** 3D-вид активной комнаты; без WebGL 2 — сообщение вместо сцены (18.5). */
 export function RoomScene() {
+  // Переходы через двери работают и без 3D.
+  return (
+    <div className="scene-wrap">
+      {webglAvailable() ? (
+        <SceneBoundary>
+          <RoomCanvas />
+        </SceneBoundary>
+      ) : (
+        <SceneUnavailable />
+      )}
+      <DoorNav />
+    </div>
+  );
+}
+
+function RoomCanvas() {
   const ap = useApartment();
   const { drag } = useStores();
   const roomId = useUi((s) => s.activeRoomId);
   const room = roomId ? ap.rooms[roomId] : undefined;
   const initial = room ? roomView(ap, room).position : ([4, 4.5, 5] as const);
   return (
-    <div className="scene-wrap">
+    <>
       <Canvas
         data-testid="scene"
         shadows
         onPointerLeave={() => drag.getState().pointAt(null)}
         onCreated={(state) => {
-          // Доступ к сцене для браузерных проверок; только в режиме разработки.
-          if (!import.meta.env.DEV) return;
+          // Доступ к сцене для браузерных проверок (см. app/probe).
+          if (!PROBE) return;
           Object.assign(window, {
             __scene: state.scene,
             __camera: state.camera,
@@ -548,8 +567,7 @@ export function RoomScene() {
         <color attach="background" args={['#14161a']} />
         <RoomContent />
       </Canvas>
-      <DoorNav />
       <AssetErrors />
-    </div>
+    </>
   );
 }

@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { useApartment, useStores, useUi } from '../app/stores';
 import { catalog, itemFitsRoom } from '../catalog/catalog';
+import { roomClearRect } from '../domain/rooms';
 import type { CatalogItem } from '../domain/types';
 
 const MOUNT_LABEL: Partial<Record<CatalogItem['mounting'], string>> = {
@@ -17,7 +18,7 @@ const sizeLabel = ({ widthCm, depthCm, heightCm }: CatalogItem['size']) =>
   `${Math.round(widthCm)} × ${Math.round(depthCm)} × ${Math.round(heightCm)} см`;
 
 export function CatalogPanel() {
-  const { drag } = useStores();
+  const { drag, ui } = useStores();
   const ap = useApartment();
   const roomId = useUi((s) => s.activeRoomId);
   const room = roomId ? ap.rooms[roomId] : undefined;
@@ -36,6 +37,13 @@ export function CatalogPanel() {
           Все ({catalog.length})
         </button>
       </div>
+      {items.length === 0 && (
+        <p className="hint" data-testid="catalog-empty">
+          {catalog.length === 0
+            ? 'Каталог не загрузился: нет предметов. План, 3D и отделка работают.'
+            : 'Для этой комнаты нет предметов. Откройте «Все», чтобы выбрать из полного каталога.'}
+        </p>
+      )}
       {categories.map((category) => (
         <section key={category} className="catalog-group">
           <h3>{category}</h3>
@@ -53,6 +61,16 @@ export function CatalogPanel() {
                       e.preventDefault();
                       (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
                       drag.getState().startFromCatalog(item.id);
+                    }}
+                    // С клавиатуры (Enter, пробел — detail 0): предмет ставится в центр комнаты той же проверкой,
+                    // затем выбирается — дальше стрелки, R и Delete (18.2). Отказ — причина в строке состояния.
+                    onClick={(e) => {
+                      if (e.detail !== 0 || !room) return;
+                      const c = roomClearRect(ap, room);
+                      drag.getState().startFromCatalog(item.id);
+                      drag.getState().pointAt({ x: (c.minX + c.maxX) / 2, z: (c.minZ + c.maxZ) / 2 }, false);
+                      const id = drag.getState().draft?.instanceId;
+                      if (drag.getState().finish()?.ok && id) ui.getState().select(id);
                     }}
                   >
                     <img

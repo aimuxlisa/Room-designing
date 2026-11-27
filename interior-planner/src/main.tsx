@@ -3,13 +3,14 @@ import { createRoot } from 'react-dom/client';
 import './ui/theme.css';
 import { App } from './App';
 import { emptyApartment } from './app/flow';
+import { PROBE } from './app/probe';
 import { createStores, StoresProvider } from './app/stores';
 import { catalog, getCatalogItem } from './catalog/catalog';
 import { createTechApartment, createTechTwoRooms } from './tech/techApartment';
 
 const stores = createStores(emptyApartment(), null, getCatalogItem);
-// Доступ к состоянию для браузерных проверок; только в режиме разработки.
-if (import.meta.env.DEV)
+// Доступ к состоянию для браузерных проверок (см. app/probe).
+if (PROBE)
   Object.assign(window, { __stores: stores, __tech: { createTechApartment, createTechTwoRooms }, __catalogIds: catalog.map((i) => i.id) });
 
 const root = createRoot(document.getElementById('root')!);
