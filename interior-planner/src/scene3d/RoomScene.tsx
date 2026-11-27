@@ -5,35 +5,34 @@
 import { OrbitControls } from '@react-three/drei';
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { Suspense, useEffect, useMemo, useRef, type ReactNode } from 'react';
-import { DoubleSide, Mesh, Plane, RepeatWrapping, SRGBColorSpace, TextureLoader, Vector2, Vector3, type Group } from 'three';
-import { getWallMaterial } from '../catalog/materials';
-import { surfaceKey } from '../domain/rooms';
-import { tileUv, type TileUv } from '../domain/surfaces';
-import type { MaterialDefinition } from '../domain/types';
-import type { WallBlock } from '../domain/wallBlocks';
+import { DoubleSide, Mesh, Plane, Vector2, Vector3, type Group } from 'three';
 import { useApartment, useCatalog, useDrag, useStores, useUi } from '../app/stores';
 import { doorLinks, type DoorLink } from '../domain/navigation';
-import { doorSwing, openingSpan, openingVerticalRange } from '../domain/openings';
-import { roomClearRect, wallFootprint } from '../domain/rooms';
+import { doorSwing, openingSpan } from '../domain/openings';
+import { roomClearRect } from '../domain/rooms';
 import { instanceCorners } from '../domain/furniture';
 import type { Apartment, CatalogItem, DoorOpening, FurnitureInstance, Opening, Room, Wall } from '../domain/types';
 import { themeTokens } from '../ui/themeTokens';
 import { cmToScene, sceneToCm } from '../domain/units';
 import { wallBlocks, wallSpanRect } from '../domain/wallBlocks';
 import { rotatePoint } from '../geometry/placement';
-import { rectDepth, rectWidth, type Point, type Rect } from '../geometry/rect';
+import { rectDepth, rectWidth, type Point } from '../geometry/rect';
 import { assetErrorReason, useAssetStatus } from './assetStatus';
 import { FurnitureModel } from './FurnitureModel';
 import { roomView } from './roomView';
 import { SceneLighting } from './SceneLighting';
+import { OutdoorWorld } from './OutdoorWorld';
 import { openingFinish } from '../catalog/openingFinishes';
 import { PROBE } from '../app/probe';
+import { DaylightControl } from '../ui/DaylightControl';
+import { LightControl } from '../ui/LightControl';
+import { RoomLights } from './RoomLights';
+import { isItemLit } from '../domain/lighting';
 import { SceneBoundary, SceneUnavailable, webglAvailable } from './SceneGuard';
+import { WalkView } from './WalkScene';
+import { center, FloorMesh, NO_RAYCAST, WallBlockMesh, wallFace, WindowMesh, wallOrientation } from './RoomParts';
 
-const center = (r: Rect) => ({ x: (r.minX + r.maxX) / 2, z: (r.minZ + r.maxZ) / 2 });
 const FLOOR = new Plane(new Vector3(0, 1, 0), 0);
-const NO_RAYCAST = () => {};
-const WALL_COLOR = '#d9d4cb';
 
 /** Точка пола под указателем: пересечение луча с плоскостью y = 0 (а не точка на поверхности модели). */
 function floorPoint(e: ThreeEvent<PointerEvent> | ThreeEvent<MouseEvent>): Point {
@@ -41,57 +40,8 @@ function floorPoint(e: ThreeEvent<PointerEvent> | ThreeEvent<MouseEvent>): Point
   return { x: sceneToCm(p.x), z: sceneToCm(p.z) };
 }
 
-/** Коробка по контуру в плане и высотному диапазону, см. */
-function BlockMesh({ rect, bottomCm, topCm, name, children }: { rect: Rect; bottomCm: number; topCm: number; name?: string; children: ReactNode }) {
-  const c = center(rect);
-  return (
-    <mesh name={name} position={[cmToScene(c.x), cmToScene((bottomCm + topCm) / 2), cmToScene(c.z)]} castShadow receiveShadow>
-      <boxGeometry args={[cmToScene(rectWidth(rect)), cmToScene(topCm - bottomCm), cmToScene(rectDepth(rect))]} />
-      {children}
-    </mesh>
-  );
-}
-
-/** Окно — стекло в отверстии; дверь — полотно, открытое на 90° в эту комнату (та же створка, что на плане). */
-/** Рама окна (D-26): обвязка по контуру и вертикальный импост, толщина 6 см, по центру стены. */
-function WindowFrame({ ap, wall, o }: { ap: Apartment; wall: Wall; o: Opening }) {
-  const [s0, s1] = openingSpan(o);
-  const [bottom, top] = openingVerticalRange(o);
-  const f = openingFinish(o);
-  const bar = 6;
-  const mid = (s0 + s1) / 2;
-  const parts: [number, number, number, number][] = [
-    [s0, s0 + bar, bottom, top],
-    [s1 - bar, s1, bottom, top],
-    [s0, s1, bottom, bottom + bar],
-    [s0, s1, top - bar, top],
-    [mid - bar / 2, mid + bar / 2, bottom, top],
-  ];
-  return (
-    <>
-      {parts.map(([a, b, lo, hi], i) => (
-        <BlockMesh key={i} name={`window-frame-${o.id}-${i}`} rect={wallSpanRect(ap, wall, a, b, 8)} bottomCm={lo} topCm={hi}>
-          <meshStandardMaterial color={f.color} roughness={f.roughness} />
-        </BlockMesh>
-      ))}
-    </>
-  );
-}
-
-function OpeningMesh({ ap, wall, o, room }: { ap: Apartment; wall: Wall; o: Opening; room: Room }) {
-  const [s0, s1] = openingSpan(o);
-  if (o.kind === 'window') {
-    const [bottom, top] = openingVerticalRange(o);
-    return (
-      <>
-        <BlockMesh name={`window-${o.id}`} rect={wallSpanRect(ap, wall, s0, s1, 2)} bottomCm={bottom} topCm={top}>
-          <meshStandardMaterial color="#9fc6e0" transparent opacity={0.25} depthWrite={false} />
-        </BlockMesh>
-        <WindowFrame ap={ap} wall={wall} o={o} />
-      </>
-    );
-  }
-  if (o.opensIntoRoomId !== room.id) return null;
+/** Полотно двери, открытое на 90° в комнату (та же створка, что на плане). */
+function DoorLeaf({ ap, o }: { ap: Apartment; o: DoorOpening }) {
   const s = doorSwing(ap, o);
   const [dx, dz] = [s.leafEnd.x - s.hinge.x, s.leafEnd.z - s.hinge.z];
   return (
@@ -107,65 +57,9 @@ function OpeningMesh({ ap, wall, o, room }: { ap: Apartment; wall: Wall; o: Open
   );
 }
 
-/** Грань блока, обращённая в комнату (группа BoxGeometry), и направление оси u текстуры на ней. */
-function innerFace(vertical: boolean, inward: number): { index: number; udir: 1 | -1 } {
-  // BoxGeometry: 0 = +x, 1 = −x, 4 = +z, 5 = −z; u на +x растёт к −z, на −x к +z, на +z к +x, на −z к −x.
-  if (vertical) return inward > 0 ? { index: 0, udir: -1 } : { index: 1, udir: 1 };
-  return inward > 0 ? { index: 4, udir: 1 } : { index: 5, udir: -1 };
-}
-
-/** Обои: своя копия текстуры на блок, повтор и сдвиг — из размеров в см (12.4). */
-function WallpaperMaterial({ attach, m, uv }: { attach: string; m: MaterialDefinition; uv: TileUv }) {
-  const tex = useMemo(() => {
-    const t = new TextureLoader().load(m.textureUrl!);
-    t.wrapS = t.wrapT = RepeatWrapping;
-    t.colorSpace = SRGBColorSpace;
-    return t;
-  }, [m.textureUrl]);
-  useEffect(() => () => tex.dispose(), [tex]);
-  tex.repeat.set(uv.repeat[0], uv.repeat[1]);
-  tex.offset.set(uv.offset[0], uv.offset[1]);
-  return <meshStandardMaterial attach={attach} name={`finish:${m.id}`} map={tex} roughness={m.roughness} />;
-}
-
-/** Блок стены: внутренняя грань получает отделку этой комнаты, остальные — базовый цвет (AC-11). */
-function WallBlockMesh(props: {
-  block: WallBlock;
-  name: string;
-  vertical: boolean;
-  inward: number;
-  finish: MaterialDefinition | undefined;
-  onSelect: (e: ThreeEvent<MouseEvent>) => void;
-}) {
-  const { block, vertical, inward, finish } = props;
-  const { rect, bottomCm, topCm } = block;
-  const c = center(rect);
-  const face = innerFace(vertical, inward);
-  const [min, max] = vertical ? [rect.minZ, rect.maxZ] : [rect.minX, rect.maxX];
-  const uv = finish?.tileSizeCm ? tileUv(face.udir * (face.udir > 0 ? min : max), max - min, bottomCm, topCm - bottomCm, finish.tileSizeCm) : null;
-  return (
-    <mesh
-      name={props.name}
-      userData={{ pick: true }}
-      position={[cmToScene(c.x), cmToScene((bottomCm + topCm) / 2), cmToScene(c.z)]}
-      castShadow
-      receiveShadow
-      onClick={props.onSelect}
-    >
-      <boxGeometry args={[cmToScene(rectWidth(rect)), cmToScene(topCm - bottomCm), cmToScene(rectDepth(rect))]} />
-      {[0, 1, 2, 3, 4, 5].map((i) =>
-        i === face.index && finish ? (
-          finish.textureUrl && uv ? (
-            <WallpaperMaterial key={`${i}-${finish.id}`} attach={`material-${i}`} m={finish} uv={uv} />
-          ) : (
-            <meshStandardMaterial key={`${i}-${finish.id}`} attach={`material-${i}`} name={`finish:${finish.id}`} color={finish.color} roughness={finish.roughness} />
-          )
-        ) : (
-          <meshStandardMaterial key={i} attach={`material-${i}`} color={WALL_COLOR} />
-        ),
-      )}
-    </mesh>
-  );
+function OpeningMesh({ ap, wall, o, room }: { ap: Apartment; wall: Wall; o: Opening; room: Room }) {
+  if (o.kind === 'window') return <WindowMesh ap={ap} wall={wall} o={o} />;
+  return o.opensIntoRoomId === room.id ? <DoorLeaf ap={ap} o={o} /> : null;
 }
 
 /** Невидимая зона проёма межкомнатной двери: нажатие переводит в соседнюю комнату. */
@@ -200,11 +94,8 @@ function DoorPortal({ ap, wall, door, onEnter }: { ap: Apartment; wall: Wall; do
 function WallGroup({ ap, wall, room, links }: { ap: Apartment; wall: Wall; room: Room; links: readonly DoorLink[] }) {
   const { ui } = useStores();
   const ref = useRef<Group>(null);
-  const fp = wallFootprint(ap, wall);
-  const c = center(fp);
-  const rc = center(roomClearRect(ap, room));
-  const vertical = rectWidth(fp) < rectDepth(fp);
-  const inward = vertical ? Math.sign(rc.x - c.x) : Math.sign(rc.z - c.z);
+  const { vertical, inward, center: c } = wallOrientation(ap, wall, room);
+  const face = wallFace(ap, wall, room);
 
   useFrame(({ camera }) => {
     const g = ref.current;
@@ -215,7 +106,6 @@ function WallGroup({ ap, wall, room, links }: { ap: Apartment; wall: Wall; room:
     for (const o of g.children) if (o.userData.pick) (o as Mesh).raycast = visible ? Mesh.prototype.raycast : NO_RAYCAST;
   });
 
-  const finish = getWallMaterial(ap.finishes.walls[surfaceKey(wall.id, room.id)] ?? '');
   // Выбор поверхности для отделки (12.1): только если стена — ближайший интерактивный объект и это щелчок, а не перенос.
   const selectSurface = (e: ThreeEvent<MouseEvent>) => {
     if (e.delta > 2 || e.intersections[0]?.object !== e.object) return;
@@ -231,8 +121,7 @@ function WallGroup({ ap, wall, room, links }: { ap: Apartment; wall: Wall; room:
           name={`wall-${wall.id}-block-${i}`}
           block={b}
           vertical={vertical}
-          inward={inward}
-          finish={finish}
+          faces={[face]}
           onSelect={selectSurface}
         />
       ))}
@@ -318,6 +207,7 @@ function Furniture({ room }: { room: Room }) {
   const { drag, ui } = useStores();
   const draft = useDrag((s) => s.draft);
   const selectedId = useUi((s) => s.selectedId);
+  const lights = useUi((s) => s.lights);
   const selected = selectedId ? ap.furniture[selectedId] : undefined;
   const selectedItem = selected && selected.roomId === room.id && !draft ? catalog(selected.catalogItemId) : undefined;
   const draftItem = draft?.position ? catalog(draft.itemId) : undefined;
@@ -340,6 +230,7 @@ function Furniture({ room }: { room: Room }) {
               key={f.id}
               item={item}
               instance={f}
+              lit={isItemLit(item, f, lights)}
               onPointerDown={(e) => {
                 if (e.button !== 0) return;
                 e.stopPropagation();
@@ -408,28 +299,19 @@ function CameraRig({ roomId }: { roomId: string }) {
   return null;
 }
 
-/** Пол комнаты: покрытие (D-16, D-25) с физическим повтором текстуры или базовый цвет. */
-function FloorMesh({ ap, room, clear }: { ap: Apartment; room: Room; clear: Rect }) {
-  const c = center(clear);
-  const [w, d] = [rectWidth(clear), rectDepth(clear)];
-  const finish = getWallMaterial(ap.finishes.floors[room.id] ?? '');
-  return (
-    <mesh name={`floor-${room.id}`} rotation-x={-Math.PI / 2} position={[cmToScene(c.x), 0, cmToScene(c.z)]} receiveShadow>
-      <planeGeometry args={[cmToScene(w), cmToScene(d)]} />
-      {finish?.textureUrl && finish.tileSizeCm ? (
-        <WallpaperMaterial key={finish.id} attach="material" m={finish} uv={tileUv(clear.minX, w, clear.minZ, d, finish.tileSizeCm)} />
-      ) : (
-        <meshStandardMaterial color={finish?.color ?? '#b89a74'} />
-      )}
-    </mesh>
-  );
-}
-
 function RoomContent() {
   const ap = useApartment();
   const { drag, ui } = useStores();
   const dragging = useDrag((s) => s.draft !== null);
   const roomId = useUi((s) => s.activeRoomId);
+  // Нажатие пришлось на пол. Предмет при нажатии уходит в перенос и монтируется заново, поэтому при щелчке
+  // его уже нет среди попаданий R3F — щелчок по полу без этой отметки снимал бы выбор предмета.
+  const floorPressed = useRef(false);
+  useEffect(() => {
+    const reset = () => void (floorPressed.current = false);
+    window.addEventListener('pointerdown', reset, true);
+    return () => window.removeEventListener('pointerdown', reset, true);
+  }, []);
   const room = roomId ? ap.rooms[roomId] : undefined;
   if (!room) return null;
   const clear = roomClearRect(ap, room);
@@ -438,8 +320,10 @@ function RoomContent() {
   const view = roomView(ap, room);
   return (
     <>
-      <SceneLighting center={c} spanCm={Math.max(rectWidth(clear), rectDepth(clear))} />
-      <FloorMesh ap={ap} room={room} clear={clear} />
+      <SceneLighting clear={clear} ceilingCm={ap.ceilingCm} />
+      <OutdoorWorld />
+      <RoomLights room={room} />
+      <FloorMesh ap={ap} room={room} />
       {/* Невидимая плоскость пола для указателя, в том числе за пределами комнаты. */}
       <mesh
         name="pick-plane"
@@ -449,8 +333,9 @@ function RoomContent() {
         // Точка отпускания — окончательная, даже если последние движения объединены браузером.
         onPointerUp={(e) => drag.getState().draft && drag.getState().pointAt(floorPoint(e), !e.nativeEvent.altKey)}
         // Щелчок по полу комнаты (не перенос, ничего перед полом) — выбор покрытия пола (D-16).
+        onPointerDown={(e) => void (floorPressed.current = e.intersections[0]?.object === e.object)}
         onClick={(e) => {
-          if (e.delta > 2 || e.intersections[0]?.object !== e.object || drag.getState().draft) return;
+          if (!floorPressed.current || e.delta > 2 || e.intersections[0]?.object !== e.object || drag.getState().draft) return;
           const p = floorPoint(e);
           if (p.x < clear.minX || p.x > clear.maxX || p.z < clear.minZ || p.z > clear.maxZ) return;
           e.stopPropagation();
@@ -504,6 +389,11 @@ function DoorNav() {
   const links = doorLinks(ap, roomId);
   return (
     <nav className="scene-nav" aria-label="Переходы между помещениями">
+      {webglAvailable() && (
+        <button type="button" className="walk-enter" data-testid="walk-enter" onClick={() => ui.getState().setWalking(true)}>
+          Прогулка по квартире
+        </button>
+      )}
       {links.map(({ door, to }) =>
         to ? (
           <button key={door.id} type="button" data-testid={`nav-door-${door.id}`} onClick={() => ui.getState().setActiveRoom(to.id)}>
@@ -519,8 +409,17 @@ function DoorNav() {
   );
 }
 
-/** 3D-вид активной комнаты; без WebGL 2 — сообщение вместо сцены (18.5). */
+/** 3D-вид активной комнаты или прогулка по квартире (этап 24); без WebGL 2 — сообщение вместо сцены (18.5). */
 export function RoomScene() {
+  const walking = useUi((s) => s.walking);
+  if (walking && webglAvailable())
+    return (
+      <div className="scene-wrap walking" role="region" aria-label="Прогулка по квартире">
+        <SceneBoundary>
+          <WalkView />
+        </SceneBoundary>
+      </div>
+    );
   // Переходы через двери работают и без 3D.
   return (
     <div className="scene-wrap">
@@ -532,6 +431,10 @@ export function RoomScene() {
         <SceneUnavailable />
       )}
       <DoorNav />
+      <div className="scene-controls">
+        <DaylightControl />
+        <LightControl />
+      </div>
     </div>
   );
 }
@@ -547,6 +450,8 @@ function RoomCanvas() {
       <Canvas
         data-testid="scene"
         shadows
+        // Трафарет — для мира за окнами (20.3).
+        gl={{ stencil: true }}
         onPointerLeave={() => drag.getState().pointAt(null)}
         onCreated={(state) => {
           // Доступ к сцене для браузерных проверок (см. app/probe).
@@ -564,7 +469,7 @@ function RoomCanvas() {
         }}
         camera={{ position: [...initial], fov: 50 }}
       >
-        <color attach="background" args={['#14161a']} />
+        <color attach="background" args={[themeTokens.sceneBg]} />
         <RoomContent />
       </Canvas>
       <AssetErrors />

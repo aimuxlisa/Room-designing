@@ -1,0 +1,182 @@
+{
+  "label": "after",
+  "channel": "chrome",
+  "sizes": {
+    "1280x720": {
+      "screens": {
+        "1-params": {
+          "hScroll": false,
+          "vScrollPage": false,
+          "contrast": {
+            "checked": 14,
+            "bad": [],
+            "badCount": 0
+          },
+          "tab": {
+            "focused": 22,
+            "withRing": 22,
+            "without": []
+          }
+        },
+        "2-schemes": {
+          "hScroll": false,
+          "vScrollPage": false,
+          "contrast": {
+            "checked": 56,
+            "bad": [],
+            "badCount": 0
+          },
+          "tab": {
+            "focused": 22,
+            "withRing": 22,
+            "without": []
+          }
+        },
+        "3-setup": {
+          "hScroll": false,
+          "vScrollPage": false,
+          "contrast": {
+            "checked": 28,
+            "bad": [],
+            "badCount": 0
+          },
+          "tab": {
+            "focused": 23,
+            "withRing": 23,
+            "without": []
+          }
+        },
+        "4-interior": {
+          "hScroll": false,
+          "vScrollPage": false,
+          "contrast": {
+            "checked": 266,
+            "bad": [],
+            "badCount": 0
+          },
+          "tab": {
+            "focused": 25,
+            "withRing": 25,
+            "without": []
+          }
+        },
+        "5-finish": {
+          "hScroll": false,
+          "vScrollPage": false,
+          "contrast": {
+            "checked": 275,
+            "bad": [],
+            "badCount": 0
+          }
+        },
+        "6-evening-apartment": {
+          "hScroll": false,
+          "vScrollPage": false,
+          "contrast": {
+            "checked": 265,
+            "bad": [],
+            "badCount": 0
+          }
+        },
+        "7-walk": {
+          "hScroll": false,
+          "vScrollPage": false,
+          "contrast": {
+            "checked": 266,
+            "bad": [],
+            "badCount": 0
+          }
+        }
+      },
+      "errors": []
+    },
+    "1920x1080": {
+      "screens": {
+        "1-params": {
+          "hScroll": false,
+          "vScrollPage": false,
+          "contrast": {
+            "checked": 14,
+            "bad": [],
+            "badCount": 0
+          },
+          "tab": {
+            "focused": 22,
+            "withRing": 22,
+            "without": []
+          }
+        },
+        "2-schemes": {
+          "hScroll": false,
+          "vScrollPage": false,
+          "contrast": {
+            "checked": 56,
+            "bad": [],
+            "badCount": 0
+          },
+          "tab": {
+            "focused": 22,
+            "withRing": 22,
+            "without": []
+          }
+        },
+        "3-setup": {
+          "hScroll": false,
+          "vScrollPage": false,
+          "contrast": {
+            "checked": 28,
+            "bad": [],
+            "badCount": 0
+          },
+          "tab": {
+            "focused": 23,
+            "withRing": 23,
+            "without": []
+          }
+        },
+        "4-interior": {
+          "hScroll": false,
+          "vScrollPage": false,
+          "contrast": {
+            "checked": 266,
+            "bad": [],
+            "badCount": 0
+          },
+          "tab": {
+            "focused": 25,
+            "withRing": 25,
+            "without": []
+          }
+        },
+        "5-finish": {
+          "hScroll": false,
+          "vScrollPage": false,
+          "contrast": {
+            "checked": 275,
+            "bad": [],
+            "badCount": 0
+          }
+        },
+        "6-evening-apartment": {
+          "hScroll": false,
+          "vScrollPage": false,
+          "contrast": {
+            "checked": 265,
+            "bad": [],
+            "badCount": 0
+          }
+        },
+        "7-walk": {
+          "hScroll": false,
+          "vScrollPage": false,
+          "contrast": {
+            "checked": 266,
+            "bad": [],
+            "badCount": 0
+          }
+        }
+      },
+      "errors": []
+    }
+  }
+}

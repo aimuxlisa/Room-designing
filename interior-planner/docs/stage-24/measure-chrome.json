@@ -1,0 +1,167 @@
+{
+  "channel": "chrome",
+  "rooms": [
+    {
+      "id": "kl",
+      "name": "Кухня-гостиная"
+    },
+    {
+      "id": "s1",
+      "name": "Спальня"
+    },
+    {
+      "id": "hall",
+      "name": "Прихожая"
+    },
+    {
+      "id": "bath",
+      "name": "Санузел"
+    }
+  ],
+  "start": {
+    "x": 247.5,
+    "z": 192.5,
+    "yaw": -1.5707963267948966,
+    "pitch": 0,
+    "room": "kl"
+  },
+  "eyeCm": 160,
+  "step1sCm": 142,
+  "backAfterArrowDownCm": 0,
+  "yawTurned": 1.57,
+  "wallRun": [
+    {
+      "yaw": 0,
+      "x": 248,
+      "z": 34,
+      "room": "kl"
+    },
+    {
+      "yaw": 1.57,
+      "x": 33,
+      "z": 34,
+      "room": "kl"
+    },
+    {
+      "yaw": 3.14,
+      "x": 33,
+      "z": 471,
+      "room": "kl"
+    },
+    {
+      "yaw": -1.57,
+      "x": 582,
+      "z": 471,
+      "room": "kl"
+    }
+  ],
+  "furnitureBlock": {
+    "obstacleIds": [
+      "furniture-sofa",
+      "furniture-table",
+      "furniture-flamp",
+      "furniture-bed"
+    ],
+    "from": {
+      "x": 302.5,
+      "z": 147.5
+    },
+    "to": {
+      "x": 302.5,
+      "z": 191.61764705882348
+    },
+    "stoppedBy": "furniture-table-0",
+    "rugPassable": true
+  },
+  "doorTrips": [
+    {
+      "door": "d1",
+      "from": "kl",
+      "to": "hall",
+      "at": {
+        "x": 307,
+        "z": 566
+      }
+    },
+    {
+      "door": "d2",
+      "from": "hall",
+      "to": "s1",
+      "at": {
+        "x": 690,
+        "z": 423
+      }
+    },
+    {
+      "door": "d3",
+      "from": "s1",
+      "to": "bath",
+      "at": {
+        "x": 843,
+        "z": 600
+      }
+    },
+    {
+      "door": "entry",
+      "from": "bath",
+      "to": "hall",
+      "at": {
+        "x": 390,
+        "z": 682
+      }
+    }
+  ],
+  "visitedRooms": [
+    "kl",
+    "hall",
+    "s1",
+    "bath"
+  ],
+  "allRoomsVisited": true,
+  "lightsHere": [
+    "light-standard:kl",
+    "light-flamp",
+    "light-standard:hall",
+    "light-standard:s1"
+  ],
+  "perf": {
+    "idle": {
+      "fps": 60.1,
+      "p95FrameMs": 17.6
+    },
+    "moving": {
+      "fps": 60,
+      "p95FrameMs": 17.7
+    },
+    "day": {
+      "fps": 60,
+      "p95FrameMs": 17.6
+    }
+  },
+  "memBefore": {
+    "geometries": 74,
+    "textures": 23,
+    "programs": 16
+  },
+  "memAfter": {
+    "geometries": 74,
+    "textures": 23,
+    "programs": 16
+  },
+  "exit": {
+    "activeRoom": "kl",
+    "projectUnchanged": true,
+    "historyUnchanged": true,
+    "editorScene": true,
+    "startedIn": "kl"
+  },
+  "reenterRoom": "kl",
+  "exitButton": true,
+  "shots": [
+    "walk-start.png",
+    "walk-hall.png",
+    "walk-s1.png",
+    "walk-bath.png"
+  ],
+  "errors": []
+}

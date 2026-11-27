@@ -1,6 +1,8 @@
 /** Состояние интерфейса: не входит в проект и в историю отмены (SPEC §6 EditorState, §8). */
 import { create } from 'zustand';
 import type { Id, WallSurfaceRef } from '../domain/types';
+import { DEFAULT_HOUR } from '../domain/daylight';
+import type { LightSwitches } from '../domain/lighting';
 
 /** Шаги приложения (SPEC §8). */
 export type EditorStage = 'params' | 'scheme' | 'setup' | 'interior';
@@ -32,6 +34,12 @@ export interface UiState {
   /** Выбранный пол комнаты для покрытия (D-16); исключает выбор предмета и стены. */
   readonly selectedFloor: Id | null;
   readonly camera: CameraState | null;
+  /** Время суток, ч (D-12): не входит в проект и в историю отмены. */
+  readonly hour: number;
+  /** Выключатели света (D-11, D-14): часть вида, не проекта; сохраняются при переходах между комнатами. */
+  readonly lights: LightSwitches;
+  /** Режим «Прогулка» (D-17): вид от первого лица по всей квартире; активная комната и проект не меняются. */
+  readonly walking: boolean;
   setStage(stage: EditorStage): void;
   setStart(patch: Partial<StartInput>): void;
   setTemplateId(id: Id | null): void;
@@ -42,6 +50,11 @@ export interface UiState {
   selectSurface(surface: WallSurfaceRef | null): void;
   selectFloor(roomId: Id | null): void;
   setCamera(camera: CameraState): void;
+  setHour(hour: number): void;
+  toggleRoomLight(roomId: Id): void;
+  toggleLamp(instanceId: Id): void;
+  /** Вход в прогулку снимает выбор; выход возвращает редактор в ту же активную комнату (24.5). */
+  setWalking(on: boolean): void;
 }
 
 export const createUiStore = () =>
@@ -55,7 +68,10 @@ export const createUiStore = () =>
     selectedSurface: null,
     selectedFloor: null,
     camera: null,
-    setStage: (stage) => set({ stage }),
+    hour: DEFAULT_HOUR,
+    lights: { rooms: {}, lamps: {} },
+    walking: false,
+    setStage: (stage) => set({ stage, walking: false }),
     setStart: (patch) => set((s) => ({ start: { ...s.start, ...patch } })),
     setTemplateId: (templateId) => set({ templateId }),
     setPlanScope: (planScope) => set({ planScope }),
@@ -65,4 +81,8 @@ export const createUiStore = () =>
       set(selectedSurface ? { selectedSurface, selectedId: null, selectedFloor: null } : { selectedSurface }),
     selectFloor: (selectedFloor) => set(selectedFloor ? { selectedFloor, selectedId: null, selectedSurface: null } : { selectedFloor }),
     setCamera: (camera) => set({ camera }),
+    setHour: (hour) => set({ hour: Math.min(24, Math.max(0, hour)) }),
+    toggleRoomLight: (roomId) => set((s) => ({ lights: { ...s.lights, rooms: { ...s.lights.rooms, [roomId]: !s.lights.rooms[roomId] } } })),
+    setWalking: (walking) => set(walking ? { walking, selectedId: null, selectedSurface: null, selectedFloor: null } : { walking }),
+    toggleLamp: (id) => set((s) => ({ lights: { ...s.lights, lamps: { ...s.lights.lamps, [id]: !s.lights.lamps[id] } } })),
   }));

@@ -1,0 +1,36 @@
+{
+  "channel": "chrome",
+  "historyUnchanged": true,
+  "lampButton": "Торшер: вкл",
+  "switchLabel": "Люстра: вкл",
+  "chandelier": {
+    "standardFixture": false,
+    "chandelierLight": true
+  },
+  "persist": {
+    "roomOnAfterReturn": true,
+    "lampOnAfterReturn": true,
+    "otherRoomUntouched": true
+  },
+  "perf": {
+    "before": {
+      "geometries": 38,
+      "textures": 24,
+      "programs": 17
+    },
+    "after": {
+      "geometries": 38,
+      "textures": 24,
+      "programs": 17
+    },
+    "lit": {
+      "fps": 60,
+      "p95FrameMs": 17.6
+    },
+    "toggling": {
+      "fps": 59.9,
+      "p95FrameMs": 17.7
+    }
+  },
+  "errors": []
+}

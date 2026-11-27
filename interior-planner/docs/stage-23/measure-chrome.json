@@ -1,0 +1,79 @@
+{
+  "channel": "chrome",
+  "panelTitle": "Пол комнаты «Кухня-гостиная»",
+  "groups": [
+    "Ламинат и доска",
+    "Паркет",
+    "Плитка и камень",
+    "Линолеум",
+    "Ковролин"
+  ],
+  "swatchCount": 22,
+  "shots": [
+    {
+      "group": "Ламинат и доска",
+      "id": "floor-laminate_floor",
+      "plan": "floor-laminate_floor",
+      "material": "finish:floor-laminate_floor",
+      "current": "Сейчас: Ламинат светлый",
+      "file": "floor-1.png"
+    },
+    {
+      "group": "Паркет",
+      "id": "floor-herringbone_parquet",
+      "plan": "floor-herringbone_parquet",
+      "material": "finish:floor-herringbone_parquet",
+      "current": "Сейчас: Паркет ёлочка",
+      "file": "floor-2.png"
+    },
+    {
+      "group": "Плитка и камень",
+      "id": "floor-floor_tiles_06",
+      "plan": "floor-floor_tiles_06",
+      "material": "finish:floor-floor_tiles_06",
+      "current": "Сейчас: Плитка серая",
+      "file": "floor-3.png"
+    },
+    {
+      "group": "Линолеум",
+      "id": "floor-linoleum_brown",
+      "plan": "floor-linoleum_brown",
+      "material": "finish:floor-linoleum_brown",
+      "current": "Сейчас: Линолеум",
+      "file": "floor-4.png"
+    },
+    {
+      "group": "Ковролин",
+      "id": "floor-curly_teddy_natural",
+      "plan": "floor-curly_teddy_natural",
+      "material": "finish:floor-curly_teddy_natural",
+      "current": "Сейчас: Ковролин натуральный",
+      "file": "floor-5.png"
+    }
+  ],
+  "historySteps": 5,
+  "afterUndo": {
+    "floorFinish": null,
+    "planFinish": 0,
+    "material": ""
+  },
+  "memBefore": {
+    "geometries": 29,
+    "textures": 19,
+    "programs": 16
+  },
+  "memAfter": {
+    "geometries": 29,
+    "textures": 19,
+    "programs": 16
+  },
+  "perf": {
+    "fps": 59.8,
+    "p95FrameMs": 18.3
+  },
+  "otherRoom": {
+    "other": "s1",
+    "finish": null
+  },
+  "errors": []
+}

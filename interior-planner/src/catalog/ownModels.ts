@@ -97,6 +97,9 @@ export function ownModelFrame(parts: readonly OwnPart[]) {
   };
 }
 
+/** Предмет каталога нарисован из собственных деталей, а не загружен из файла. */
+export const isOwnModel = (item: { readonly modelUrl: string }) => item.modelUrl.startsWith('own:');
+
 export const OWN_MODELS: Readonly<Record<string, readonly OwnPart[]>> = {
   // ---- Ванная ----
   bathtub: [
@@ -200,6 +203,8 @@ export const OWN_MODELS: Readonly<Record<string, readonly OwnPart[]>> = {
     box(0, 2, 0, 76, 4, 26, 'graphite'),
     box(0, 100.5, 0, 82, 1, 32, 'oak'),
   ],
+  // Настольная лампа с абажуром (21.2): основание, стойка, абажур.
+  table_lamp: [cyl(0, 1, 0, 8, 2, 'graphite'), cyl(0, 15, 0, 1.2, 26, 'brass'), cyl(0, 36, 0, 14, 18, 'shade', 10)],
   wall_sconce: [
     box(0, 10, -8.5, 10, 20, 3, 'brass'),
     cyl(0, 10, -1, 1, 14, 'brass', undefined, 'z'),

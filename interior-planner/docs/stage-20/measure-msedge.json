@@ -1,0 +1,25 @@
+{
+  "channel": "msedge",
+  "historyUnchanged": true,
+  "perf": {
+    "before": {
+      "geometries": 39,
+      "textures": 21,
+      "programs": 15
+    },
+    "after": {
+      "geometries": 39,
+      "textures": 21,
+      "programs": 15
+    },
+    "idle": {
+      "fps": 60.1,
+      "p95FrameMs": 17
+    },
+    "slider": {
+      "fps": 59.9,
+      "p95FrameMs": 17
+    }
+  },
+  "errors": []
+}

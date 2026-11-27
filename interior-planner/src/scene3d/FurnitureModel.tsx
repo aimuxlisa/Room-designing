@@ -8,7 +8,7 @@ import { useGLTF } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
 import { Component, useMemo, type ReactNode } from 'react';
 import { Box3, Color, Mesh, MeshStandardMaterial, Vector3, type Object3D } from 'three';
-import { OWN_MODELS, ownModelFrame } from '../catalog/ownModels';
+import { isOwnModel, OWN_MODELS, ownModelFrame } from '../catalog/ownModels';
 import type { CatalogItem, FurnitureInstance } from '../domain/types';
 import { assetToSceneScale, cmToScene } from '../domain/units';
 import { degToRad } from '../geometry/placement';
@@ -51,13 +51,13 @@ function GltfBody({ item, ghost }: { item: CatalogItem; ghost: GhostState }) {
   );
 }
 
-function OwnBody({ item, ghost }: { item: CatalogItem; ghost: GhostState }) {
+function OwnBody({ item, ghost, lit }: { item: CatalogItem; ghost: GhostState; lit: boolean }) {
   const parts = OWN_MODELS[item.modelUrl.slice('own:'.length)];
   const { offset } = ownModelFrame(parts);
   return (
     <group scale={cmToScene(1)}>
       <group position={offset as [number, number, number]}>
-        <OwnModel parts={parts} ghost={ghost} />
+        <OwnModel parts={parts} ghost={ghost} lit={lit} />
       </group>
     </group>
   );
@@ -91,12 +91,14 @@ export function FurnitureModel(props: {
   item: CatalogItem;
   instance: Pick<FurnitureInstance, 'id' | 'position' | 'angleDeg'>;
   ghost?: GhostState;
+  /** Светильник включён (21.4): у собственных моделей светится абажур. */
+  lit?: boolean;
   onPointerDown?: (e: ThreeEvent<PointerEvent>) => void;
 }) {
   const { item, instance, ghost = 'none' } = props;
   // Повтор загрузки перемонтирует тело модели с новой попыткой.
   const attempt = useAssetStatus((s) => s.attempts[item.modelUrl] ?? 0);
-  const own = item.modelUrl.startsWith('own:');
+  const own = isOwnModel(item);
   return (
     <group
       name={ghost === 'none' ? `item-${instance.id}` : 'draft'}
@@ -105,7 +107,7 @@ export function FurnitureModel(props: {
       onPointerDown={props.onPointerDown}
     >
       <ModelBoundary key={attempt} item={item}>
-        {own ? <OwnBody item={item} ghost={ghost} /> : <GltfBody item={item} ghost={ghost} />}
+        {own ? <OwnBody item={item} ghost={ghost} lit={props.lit ?? false} /> : <GltfBody item={item} ghost={ghost} />}
       </ModelBoundary>
     </group>
   );

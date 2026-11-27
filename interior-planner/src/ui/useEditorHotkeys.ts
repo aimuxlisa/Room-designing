@@ -28,6 +28,8 @@ export function useEditorHotkeys({ project, ui, drag, catalog }: Stores) {
       drag.getState().report(r.ok ? null : r.issues[0].message);
     };
     const onKey = (e: KeyboardEvent) => {
+      // В прогулке клавиши управляют движением, проект не меняется (24.5).
+      if (ui.getState().walking) return;
       const key = toKeyInput(e);
       const history = historyActionForKey(key);
       if (history) {

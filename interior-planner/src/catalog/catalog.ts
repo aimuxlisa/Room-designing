@@ -101,6 +101,7 @@ export const catalog: readonly CatalogItem[] = [
   own('tv_stand', { name: 'Тумба под ТВ', category: 'Хранение', rooms: LIVING }),
   own('rug', { name: 'Ковёр', category: 'Ковры', rooms: [...LIVING, ...BED, ...HALL], layer: 'floor-covering' }),
   own('floor_lamp', { name: 'Торшер', category: 'Светильники', rooms: [...LIVING, ...BED] }),
+  own('table_lamp', { name: 'Настольная лампа с абажуром', category: 'Светильники', rooms: [...LIVING, ...BED], mounting: 'tabletop' }),
   polyHaven('Chandelier_02', s(67.9, 61.9, 84.8), { name: 'Люстра', category: 'Светильники', rooms: [...LIVING, ...BED], mounting: 'ceiling' }),
   polyHaven('vintage_oil_lamp', s(22, 22, 80.2), { name: 'Настольная лампа', category: 'Светильники', rooms: [...LIVING, ...BED], mounting: 'tabletop' }),
   // Спальня

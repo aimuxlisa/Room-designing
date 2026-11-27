@@ -40,7 +40,7 @@ test('6.1: нажатие на другую комнату в виде квар�
   await loadTwoRooms(page);
   await page.getByRole('button', { name: 'Вся квартира' }).click();
   await page.getByTestId('plan-room-a').click({ position: { x: 20, y: 20 } });
-  await page.getByRole('button', { name: 'Комната' }).click();
+  await page.getByRole('button', { name: 'Комната', exact: true }).click();
   await expect(page.getByTestId('plan-dim-width')).toHaveText('400 см');
 });
 

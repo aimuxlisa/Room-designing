@@ -1,201 +1,267 @@
-/* Тёмная тема (D-13). Все цвета интерфейса — только через эти переменные. */
+/*
+ * Тёмная тема (D-13, этап 25). Все цвета, размеры шрифта, радиусы, тени и отступы интерфейса — только через
+ * эти переменные. Цвета для проверки контраста продублированы в themeTokens.ts.
+ */
 :root {
   color-scheme: dark;
+  /* Поверхности: от фона к приподнятым панелям. */
   --bg: #0f1114;
   --surface: #171a1f;
   --surface-2: #1f232a;
+  --surface-3: #282d36;
+  --overlay: rgba(23, 26, 31, 0.86);
+  --scene-bg: #14161a;
   --border: #2c313a;
+  --border-strong: #3b4250;
+  /* Текст и акценты. */
   --text: #e6e9ee;
   --text-muted: #9aa3af;
   --accent: #6aa8ff;
+  --accent-hover: #8bbcff;
+  --accent-soft: rgba(106, 168, 255, 0.14);
   --accent-text: #0b0d10;
   --danger: #ff6b6b;
   --success: #4ade80;
+  /* Форма. */
+  --radius-sm: 4px;
   --radius: 6px;
-  --font: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --radius-lg: 10px;
+  --shadow-overlay: 0 6px 24px rgba(0, 0, 0, 0.35);
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+  /* Отступы. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  /* Типографика. */
+  --font: 'Segoe UI Variable', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-md: 13px;
+  --fs-base: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 20px;
+  --transition: 120ms ease;
 }
+
+/* ---- Основа ---- */
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
-body { background: var(--bg); color: var(--text); font: 14px/1.4 var(--font); }
+body { background: var(--bg); color: var(--text); font: var(--fs-base)/1.4 var(--font); -webkit-font-smoothing: antialiased; }
+.muted { color: var(--text-muted); }
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+::selection { background: var(--accent-soft); }
+
+/* ---- Элементы управления: одна кнопка на всё приложение, контексты меняют только размер ---- */
+button {
+  background: var(--surface-2); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 6px 12px; font: inherit; font-size: var(--fs-md); line-height: 1.3; cursor: pointer;
+  transition: border-color var(--transition), background-color var(--transition), color var(--transition);
+}
+button:hover:not(:disabled) { border-color: var(--border-strong); background: var(--surface-3); }
+button:active:not(:disabled) { background: var(--surface); }
+button[aria-pressed='true'], button[aria-checked='true'] { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+button:disabled { color: var(--text-muted); opacity: 0.55; cursor: default; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+button.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+button.primary:disabled { background: var(--surface-2); color: var(--text-muted); border-color: var(--border); opacity: 1; }
+input[type='text'], input[type='number'], input:not([type]) {
+  background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 6px 8px; font: inherit; transition: border-color var(--transition);
+}
+input:hover:not(:focus-visible) { border-color: var(--border-strong); }
+input[aria-invalid='true'] { border-color: var(--danger); }
+input[type='range'] { accent-color: var(--accent); }
+.badge { font-size: var(--fs-xs); font-weight: 500; color: var(--text-muted); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+.badge.accent { color: var(--accent); border-color: var(--accent); }
+.hint { margin: 0; color: var(--text-muted); font-size: var(--fs-md); }
+.hint.error { color: var(--danger); }
+.actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+
+/* ---- Каркас и шаги ---- */
 .app { display: flex; flex-direction: column; height: 100%; }
 .app-header {
-  display: flex; align-items: baseline; gap: 12px;
-  padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) var(--space-4); background: var(--surface); border-bottom: 1px solid var(--border); min-height: 48px;
 }
-.app-header h1 { font-size: 16px; margin: 0; font-weight: 600; }
-.muted { color: var(--text-muted); }
-.app-main { flex: 1; min-height: 0; display: grid; grid-template-columns: 260px 2fr 3fr; }
-.catalog { background: var(--surface); border-right: 1px solid var(--border); padding: 12px; overflow: auto; }
-/* Левая колонка интерьера: отделка выбранной стены над каталогом (этап 12). */
-.side-col { display: flex; flex-direction: column; min-height: 0; background: var(--surface); }
-.side-col .catalog { flex: 1; }
-.finish-panel { padding: 12px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); display: grid; gap: 8px; background: var(--surface-2); }
-.finish-panel h2 { font-size: 13px; margin: 0; font-weight: 600; }
-.finish-panel h3 { font-size: 12px; margin: 4px 0 0; color: var(--text-muted); font-weight: 500; display: flex; gap: 6px; align-items: center; }
-.finish-panel p { margin: 0; font-size: 12px; }
-.finish-panel .actions { display: flex; gap: 6px; }
-.finish-panel .actions button { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer; }
-.finish-panel .actions button:disabled { opacity: 0.5; cursor: default; }
-.swatches { display: flex; flex-wrap: wrap; gap: 6px; }
-.swatch { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; padding: 0; }
-.swatch[aria-pressed='true'] { outline: 2px solid var(--accent); outline-offset: 2px; }
-.swatch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.catalog h2 { font-size: 13px; margin: 0 0 10px; font-weight: 600; display: flex; gap: 8px; align-items: center; }
-.catalog ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.badge { font-size: 11px; font-weight: 500; color: var(--text-muted); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; }
-.catalog-item {
-  width: 100%; display: grid; grid-template-columns: 64px 1fr; gap: 8px; align-items: center; text-align: left; cursor: grab; user-select: none;
-  background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 6px 8px; font: inherit;
-}
-.catalog-item:hover { border-color: var(--accent); }
-.catalog-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.catalog-item .muted { font-size: 12px; }
-.catalog-item .muted.small { font-size: 11px; }
-.catalog-text { display: grid; gap: 1px; min-width: 0; }
-/* Превью этапа 13.5 (scripts/capture-previews.mjs): кадр модели 160 × 120. */
-.catalog-preview { width: 64px; height: 48px; object-fit: cover; border-radius: 4px; background: var(--surface); pointer-events: none; }
-.catalog-filter { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
-.catalog-filter button { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 3px 8px; font: inherit; font-size: 12px; cursor: pointer; }
-.catalog-filter button[aria-pressed='true'] { border-color: var(--accent); color: var(--accent); }
-.catalog-filter button:disabled { opacity: 0.5; cursor: default; }
-.catalog-group h3 { font-size: 12px; color: var(--text-muted); font-weight: 500; margin: 10px 0 6px; }
-.scene-unavailable { position: absolute; inset: 0; display: grid; align-content: center; gap: 8px; padding: 24px; max-width: 520px; margin: 0 auto; }
-.scene-unavailable h2 { margin: 0; font-size: 18px; }
-.scene-unavailable p { margin: 0; line-height: 1.5; }
-.scene-errors { position: absolute; bottom: 8px; left: 8px; right: 8px; display: grid; gap: 6px; z-index: 1; }
-.scene-errors p { margin: 0; display: flex; gap: 8px; align-items: center; background: var(--surface-2); border: 1px solid var(--danger); color: var(--text); border-radius: var(--radius); padding: 6px 10px; font-size: 13px; }
-.scene-errors button { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 2px 8px; font: inherit; cursor: pointer; }
-.status { padding: 6px 16px; background: var(--surface); border-top: 1px solid var(--border); color: var(--text-muted); font-size: 13px; }
-.status.error { color: var(--danger); }
-.plan-item { fill: var(--accent); fill-opacity: 0.35; stroke: var(--accent); stroke-width: 1.5; cursor: move; }
-.plan-item.selected { fill-opacity: 0.55; stroke-width: 2.5; }
-.plan-item.draft { fill-opacity: 0.25; stroke-dasharray: 4 3; pointer-events: none; }
-.plan-item.draft.invalid { fill: var(--danger); stroke: var(--danger); }
-.pane { min-width: 0; min-height: 0; position: relative; }
-.pane-plan { border-right: 1px solid var(--border); background: var(--surface); }
-/* 3D и переходы между помещениями (этап 10). */
-.scene-wrap { position: absolute; inset: 0; }
-.scene-nav { position: absolute; top: 8px; left: 8px; display: flex; flex-wrap: wrap; gap: 6px; z-index: 1; }
-.scene-nav button, .scene-nav-note { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px 10px; font: inherit; font-size: 13px; }
-.scene-nav button { cursor: pointer; }
-.scene-nav button:hover { border-color: var(--accent); }
-.scene-nav-note { color: var(--text-muted); }
-.plan-wrap { display: flex; flex-direction: column; height: 100%; }
-.plan-toolbar { display: flex; gap: 6px; padding: 8px; border-bottom: 1px solid var(--border); }
-.plan-toolbar button {
-  background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 4px 10px; font: inherit; font-size: 13px; cursor: pointer;
-}
-.plan-toolbar button[aria-pressed='true'] { border-color: var(--accent); color: var(--accent); }
-.plan-toolbar button:disabled { color: var(--text-muted); cursor: default; }
-.plan-toolbar button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.plan { flex: 1; min-height: 0; overflow: hidden; }
-.plan svg { display: block; }
-.plan-floor { fill: var(--surface-2); }
-.plan-floor.active { fill: var(--surface-2); stroke: var(--accent); stroke-width: 1; stroke-opacity: 0.6; }
-.plan-room.clickable { cursor: pointer; }
-.plan-room.clickable:hover .plan-floor { fill-opacity: 0.7; }
-/* Разрыв только визуальный: клик проходит к стене под ним (настройка выбирает стену и в месте двери). */
-.plan-opening-gap { fill: var(--surface); pointer-events: none; }
-.plan-door-leaf { stroke: var(--text); stroke-width: 2; }
-/* Невидимые зоны выбора проёма (этап 9): полотно двери и контур окна. */
-.plan-opening-hit { fill: transparent; pointer-events: all; cursor: pointer; }
-.plan-finish { stroke-width: 5; pointer-events: none; }
-.plan-rotate-stem { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; pointer-events: none; }
-.plan-rotate-knob { fill: var(--surface); stroke: var(--accent); stroke-width: 2; cursor: grab; }
-.plan-rotate-knob:hover { fill: var(--accent); }
-.plan-surface-selected { stroke: var(--accent); stroke-width: 3; stroke-dasharray: 6 4; pointer-events: none; }
-.plan-door.selected .plan-door-leaf, .plan-window.selected .plan-window-line { stroke: var(--accent); }
-.plan-door-arc { fill: none; stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 3 3; }
-.plan-window-line { stroke: var(--accent); stroke-width: 1.5; }
-.plan-dim.small { font-size: 11px; fill: var(--text-muted); }
-.plan-caption { fill: var(--text); font-size: 13px; pointer-events: none; }
-.plan-caption .muted { fill: var(--text-muted); font-size: 11px; }
-.plan-wall { fill: var(--text-muted); }
-.plan-wall.shared { fill: var(--text); opacity: 0.6; }
-.plan-dim { fill: var(--text); font-size: 12px; }
-
-/* ---- Шаги и стартовый сценарий (этап 7) ---- */
-.stepper ol { display: flex; gap: 4px; list-style: none; margin: 0 0 0 24px; padding: 0; }
-.stepper button {
-  background: none; border: 1px solid transparent; color: var(--text-muted); font: inherit; font-size: 13px;
-  padding: 4px 10px; border-radius: var(--radius); cursor: pointer;
-}
-.stepper button[aria-current='step'] { color: var(--text); border-color: var(--border); background: var(--surface-2); }
-.stepper button:disabled { opacity: 0.45; cursor: default; }
-.stepper button:focus-visible { outline: 2px solid var(--accent); }
+.app-header h1 { font-size: var(--fs-lg); margin: 0; font-weight: 650; letter-spacing: 0.01em; white-space: nowrap; }
+.stepper ol { display: flex; gap: var(--space-1); list-style: none; margin: 0 0 0 var(--space-5); padding: 0; }
+.stepper button { background: none; border-color: transparent; color: var(--text-muted); padding: 4px 10px; }
+.stepper button:hover:not(:disabled) { background: var(--surface-2); border-color: transparent; color: var(--text); }
+.stepper button[aria-current='step'] { color: var(--text); border-color: var(--border); background: var(--surface-2); font-weight: 600; }
+.stepper button[aria-current='step'] .step-n { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.stepper button:disabled { opacity: 0.45; }
 .step-n {
   display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
-  border: 1px solid currentColor; font-size: 11px; margin-right: 4px;
+  border: 1px solid currentColor; font-size: var(--fs-xs); margin-right: var(--space-1);
 }
-.page { flex: 1; min-height: 0; overflow: auto; padding: 32px 24px; }
-.start { max-width: 520px; margin: 0 auto; display: grid; gap: 24px; }
-.start h2, .schemes h2, .setup-side h2 { margin: 0; font-size: 20px; font-weight: 600; }
-.start-field { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; }
-.start-field legend, .start-field label { font-weight: 500; margin-bottom: 4px; }
-.segmented { display: flex; gap: 8px; }
-.segmented button, .actions button, .scheme-card button, .start > button {
-  background: var(--surface-2); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 8px 14px; font: inherit; cursor: pointer;
-}
-.segmented button[aria-checked='true'] { border-color: var(--accent); color: var(--accent); }
-button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
-button.primary:disabled { background: var(--surface-2); color: var(--text-muted); border-color: var(--border); cursor: default; }
-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.start input {
-  background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 8px 10px; font: inherit; width: 220px;
-}
-.start input[aria-invalid='true'] { border-color: var(--danger); }
-.start input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.hint { margin: 0; color: var(--text-muted); font-size: 13px; }
-.hint.error { color: var(--danger); }
+.page { flex: 1; min-height: 0; overflow: auto; padding: 32px var(--space-5); }
+.status { padding: 6px var(--space-4); background: var(--surface); border-top: 1px solid var(--border); color: var(--text-muted); font-size: var(--fs-md); }
+.status.error { color: var(--danger); }
+
+/* ---- Стартовый сценарий (этап 7) ---- */
+.start { max-width: 520px; margin: 0 auto; display: grid; gap: var(--space-5); }
+.start h2, .schemes h2, .setup-side h2 { margin: 0; font-size: var(--fs-xl); font-weight: 600; }
+.start-field { border: 0; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.start-field legend, .start-field label { font-weight: 500; margin-bottom: var(--space-1); }
+.segmented { display: flex; gap: var(--space-2); }
+.segmented button, .start > button { padding: 8px 14px; font-size: var(--fs-base); }
+.start input { padding: 8px 10px; width: 220px; }
 .schemes { max-width: 1100px; margin: 0 auto; display: grid; gap: 20px; }
 .schemes-head { display: grid; gap: 6px; }
 .scheme-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
 .scheme-card {
   display: grid; grid-template-columns: 300px 1fr; gap: 18px; padding: 14px;
-  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  transition: border-color var(--transition);
 }
+.scheme-card:hover { border-color: var(--border-strong); }
 .scheme-card.chosen { border-color: var(--accent); }
 .scheme-body { display: grid; gap: 6px; align-content: start; }
-.scheme-body h3 { margin: 0; font-size: 16px; display: flex; gap: 8px; align-items: center; }
+.scheme-body h3 { margin: 0; font-size: var(--fs-lg); display: flex; gap: var(--space-2); align-items: center; }
 .scheme-body p { margin: 0; }
-.scheme-rooms { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; }
-.scheme-card button { justify-self: start; margin-top: 6px; }
-.badge.accent { color: var(--accent); border-color: var(--accent); }
-.plan-preview { background: var(--surface-2); border-radius: 6px; }
-.setup { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px 1fr; }
-.setup-side { background: var(--surface); border-right: 1px solid var(--border); padding: 16px; display: grid; gap: 16px; align-content: start; }
-.facts { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; margin: 0; font-size: 13px; }
-.facts dt { color: var(--text-muted); }
-.facts dd { margin: 0; text-align: right; }
-.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.scheme-rooms { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: var(--fs-md); }
+.scheme-card button { justify-self: start; margin-top: 6px; padding: 8px 14px; font-size: var(--fs-base); }
+.plan-preview { background: var(--surface-2); border-radius: var(--radius); }
 
 /* ---- Настройка квартиры (этап 8) ---- */
-.setup-side { overflow: auto; }
-.panel { display: grid; gap: 10px; padding: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; }
-.panel h3 { margin: 0; font-size: 14px; }
-.panel h4 { margin: 0 0 4px; font-size: 13px; color: var(--text-muted); font-weight: 500; }
-.panel button { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 12px; font: inherit; cursor: pointer; justify-self: start; }
-.panel button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-.panel button:disabled { opacity: 0.5; cursor: default; }
-.field { display: grid; gap: 4px; font-size: 13px; }
-.field input { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 8px; font: inherit; width: 140px; }
-.field input[aria-invalid='true'] { border-color: var(--danger); }
-.field input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.preview { font-size: 13px; }
+.setup { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px 1fr; }
+.setup-side { background: var(--surface); border-right: 1px solid var(--border); padding: var(--space-4); display: grid; gap: var(--space-4); align-content: start; overflow: auto; }
+.facts { display: grid; grid-template-columns: 1fr auto; gap: 6px var(--space-3); margin: 0; font-size: var(--fs-md); }
+.facts dt { color: var(--text-muted); }
+.facts dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.panel { display: grid; gap: 10px; padding: var(--space-3); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.panel h3 { margin: 0; font-size: var(--fs-base); }
+.panel h4 { margin: 0 0 var(--space-1); font-size: var(--fs-md); color: var(--text-muted); font-weight: 500; }
+.panel button { justify-self: start; }
+.panel button:not(.primary) { background: var(--surface); }
+.field { display: grid; gap: var(--space-1); font-size: var(--fs-md); }
+.field input { width: 140px; }
+.preview { font-size: var(--fs-md); }
 .preview ul { margin: 0 0 6px; padding-left: 18px; }
 .preview p { margin: 0; }
-.plan-wall.editable { cursor: grab; }
-.plan-wall.editable:hover { fill: var(--text); }
-.plan-wall.selected { fill: var(--accent); opacity: 1; }
 
-/* Этап 15: мешающий изменению квартиры предмет и возврат в настройку. */
-.plan-item.conflict { fill: var(--danger); fill-opacity: 0.45; stroke: var(--danger); stroke-width: 2.5; }
+/* ---- Интерьер: колонки, каталог, отделка ---- */
+.app-main { flex: 1; min-height: 0; display: grid; grid-template-columns: 260px 2fr 3fr; }
+.pane { min-width: 0; min-height: 0; position: relative; }
+.pane-plan { border-right: 1px solid var(--border); background: var(--surface); }
+.side-col { display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-right: 1px solid var(--border); }
+.side-col .catalog { flex: 1; }
+.catalog { background: var(--surface); padding: var(--space-3); overflow: auto; }
+.catalog h2 { font-size: var(--fs-md); margin: 0 0 10px; font-weight: 600; display: flex; gap: var(--space-2); align-items: center; }
+.catalog ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.catalog-filter { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.catalog-filter button { padding: 3px 8px; font-size: var(--fs-sm); }
+.catalog-group h3 { font-size: var(--fs-sm); color: var(--text-muted); font-weight: 500; margin: 10px 0 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+.catalog-item {
+  width: 100%; display: grid; grid-template-columns: 64px 1fr; gap: var(--space-2); align-items: center; text-align: left; cursor: grab; user-select: none;
+  padding: 6px var(--space-2); font-size: var(--fs-base);
+}
+.catalog-item:hover:not(:disabled) { border-color: var(--accent); background: var(--surface-2); }
+.catalog-item .muted { font-size: var(--fs-sm); }
+.catalog-item .muted.small { font-size: var(--fs-xs); }
+.catalog-text { display: grid; gap: 1px; min-width: 0; }
+/* Превью этапа 13.5 (scripts/capture-previews.mjs): кадр модели 160 × 120. */
+.catalog-preview { width: 64px; height: 48px; object-fit: cover; border-radius: var(--radius-sm); background: var(--surface); pointer-events: none; }
+/* Левая колонка: отделка выбранной поверхности над каталогом (этап 12). */
+.finish-panel { padding: var(--space-3); border-bottom: 1px solid var(--border); display: grid; gap: var(--space-2); background: var(--surface-2); }
+.finish-panel h2 { font-size: var(--fs-md); margin: 0; font-weight: 600; }
+.finish-panel h3 { font-size: var(--fs-sm); margin: var(--space-1) 0 0; color: var(--text-muted); font-weight: 500; display: flex; gap: 6px; align-items: center; }
+.finish-panel p { margin: 0; font-size: var(--fs-sm); }
+.finish-panel .actions { gap: 6px; }
+.finish-panel .actions button { padding: 4px 10px; font-size: var(--fs-sm); background: var(--surface); }
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0 2px 4px; }
+.swatch { width: 28px; height: 28px; border-radius: var(--radius); border: 1px solid var(--border); padding: 0; transition: transform var(--transition); }
+.swatch:hover:not(:disabled) { transform: scale(1.08); border-color: var(--border-strong); }
+.swatch[aria-pressed='true'] { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---- 2D-план ---- */
+.plan-wrap { display: flex; flex-direction: column; height: 100%; }
+.plan-toolbar { display: flex; flex-wrap: wrap; gap: 6px; padding: var(--space-2); border-bottom: 1px solid var(--border); }
+.plan-toolbar button { padding: 4px 10px; white-space: nowrap; }
 .plan-toolbar .plan-to-setup { margin-left: auto; }
-
+.plan { flex: 1; min-height: 0; overflow: hidden; }
+.plan svg { display: block; }
+/* Подписи плана читаются поверх стен, дуг дверей и мебели: обводка цветом фона под буквами. */
+.plan text { paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; }
+.plan-caption { fill: var(--text); font-size: var(--fs-md); pointer-events: none; }
+.plan-caption .muted { fill: var(--text-muted); font-size: var(--fs-xs); }
+.plan-dim { fill: var(--text); font-size: var(--fs-sm); }
+.plan-dim.small { font-size: var(--fs-xs); fill: var(--text-muted); }
+.plan-floor { fill: var(--surface-2); }
+.plan-floor.active { fill: var(--surface-2); stroke: var(--accent); stroke-width: 1; stroke-opacity: 0.6; }
+.plan-room.clickable { cursor: pointer; }
+.plan-room.clickable:hover .plan-floor { fill: var(--surface-3); }
 /* Покрытие пола на плане (D-16): заливка средним цветом материала; выбранный пол — пунктир. */
 .plan-floor-finish { fill-opacity: 0.45; pointer-events: none; }
 .plan-floor-selected { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 4; pointer-events: none; }
+.plan-wall { fill: var(--text-muted); }
+.plan-wall.shared { fill: var(--text); opacity: 0.6; }
+.plan-wall.editable { cursor: grab; }
+.plan-wall.editable:hover { fill: var(--text); }
+.plan-wall.selected { fill: var(--accent); opacity: 1; }
+.plan-finish { stroke-width: 5; pointer-events: none; }
+.plan-surface-selected { stroke: var(--accent); stroke-width: 3; stroke-dasharray: 6 4; pointer-events: none; }
+/* Разрыв только визуальный: клик проходит к стене под ним (настройка выбирает стену и в месте двери). */
+.plan-opening-gap { fill: var(--surface); pointer-events: none; }
+/* Невидимые зоны выбора проёма (этап 9): полотно двери и контур окна. */
+.plan-opening-hit { fill: transparent; pointer-events: all; cursor: pointer; }
+.plan-door-leaf { stroke: var(--text); stroke-width: 2; }
+.plan-door-arc { fill: none; stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.plan-window-line { stroke: var(--accent); stroke-width: 1.5; }
+.plan-door.selected .plan-door-leaf, .plan-window.selected .plan-window-line { stroke: var(--accent); }
+.plan-item { fill: var(--accent); fill-opacity: 0.3; stroke: var(--accent); stroke-width: 1.5; cursor: move; }
+.plan-item:hover { fill-opacity: 0.42; }
+.plan-item.selected { fill-opacity: 0.55; stroke-width: 2.5; }
+.plan-item.draft { fill-opacity: 0.25; stroke-dasharray: 4 3; pointer-events: none; }
+.plan-item.draft.invalid { fill: var(--danger); stroke: var(--danger); }
+/* Этап 15: мешающий изменению квартиры предмет. */
+.plan-item.conflict { fill: var(--danger); fill-opacity: 0.45; stroke: var(--danger); stroke-width: 2.5; }
+.plan-rotate-stem { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; pointer-events: none; }
+.plan-rotate-knob { fill: var(--surface); stroke: var(--accent); stroke-width: 2; cursor: grab; }
+.plan-rotate-knob:hover { fill: var(--accent); }
+
+/* ---- 3D: сцена и панели поверх неё ---- */
+.scene-wrap { position: absolute; inset: 0; background: var(--scene-bg); }
+/* Панели поверх 3D — полупрозрачная поверхность с размытием фона и тенью. */
+.scene-nav button, .scene-nav-note, .daylight, .light-control button, .light-control .muted, .walk-hud, .scene-errors p {
+  background: var(--overlay); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow-overlay); backdrop-filter: blur(8px);
+}
+.scene-nav { position: absolute; top: var(--space-2); left: var(--space-2); display: flex; flex-wrap: wrap; gap: 6px; z-index: 1; max-width: calc(50% - 16px); }
+.scene-nav button, .scene-nav-note { padding: 5px 10px; font-size: var(--fs-md); }
+.scene-nav button:hover:not(:disabled) { border-color: var(--accent); background: var(--overlay); }
+.scene-nav-note { color: var(--text-muted); }
+.scene-nav .walk-enter { border-color: var(--accent); color: var(--accent); }
+.scene-controls { position: absolute; top: var(--space-2); right: var(--space-2); z-index: 1; display: grid; gap: 6px; justify-items: end; max-width: calc(100% - 16px); }
+.daylight { display: grid; gap: 6px; padding: 6px 10px; font-size: var(--fs-md); max-width: calc(100% - 16px); }
+.daylight label { white-space: nowrap; display: flex; align-items: center; gap: var(--space-2); color: var(--text-muted); }
+.daylight input[type='range'] { width: 140px; }
+.daylight output { color: var(--text); font-variant-numeric: tabular-nums; min-width: 3.2em; }
+.daylight-presets { display: flex; gap: var(--space-1); flex-wrap: wrap; }
+.daylight-presets button { padding: 2px 8px; background: var(--surface); }
+.light-control { display: flex; flex-wrap: wrap; gap: var(--space-1); justify-content: flex-end; align-items: center; font-size: var(--fs-md); }
+.light-control button { padding: 5px 10px; }
+.light-control button:hover:not(:disabled) { border-color: var(--accent); background: var(--overlay); }
+.light-control button[aria-pressed='true'] { border-color: var(--accent); color: var(--accent); }
+.light-control .muted { padding: 2px 8px; }
+.scene-errors { position: absolute; bottom: var(--space-2); left: var(--space-2); right: var(--space-2); display: grid; gap: 6px; z-index: 1; }
+.scene-errors p { margin: 0; display: flex; gap: var(--space-2); align-items: center; border-color: var(--danger); color: var(--text); padding: 6px 10px; font-size: var(--fs-md); }
+.scene-errors button { padding: 2px 8px; }
+.scene-unavailable { position: absolute; inset: 0; display: grid; align-content: center; gap: var(--space-2); padding: var(--space-5); max-width: 520px; margin: 0 auto; }
+.scene-unavailable h2 { margin: 0; font-size: 18px; }
+.scene-unavailable p { margin: 0; line-height: 1.5; }
+
+/* Прогулка по квартире (этап 24): сцена на всё окно поверх редактора, прицел в центре. */
+.scene-wrap.walking { position: fixed; inset: 0; z-index: 50; }
+.walk-hud { position: absolute; top: var(--space-2); left: var(--space-2); z-index: 1; display: grid; gap: 6px; justify-items: start; max-width: min(420px, calc(100% - 16px)); padding: var(--space-2) var(--space-3); font-size: var(--fs-md); }
+.walk-hud p { margin: 0; }
+.walk-room { font-weight: 600; }
+.walk-hud button { padding: 4px 10px; background: var(--surface); }
+.walking::after { content: ''; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(255, 255, 255, 0.7); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4); pointer-events: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}

@@ -25,6 +25,9 @@ const SPECS: Record<OwnMaterial, ConstructorParameters<typeof MeshStandardMateri
   rugBlue: { color: '#4c6a8a', roughness: 0.95 },
 };
 
+/** Абажур включённого светильника: светится тёплым светом (21.4). */
+const litShade = new MeshStandardMaterial({ ...SPECS.shade, emissive: '#ffcf8a', emissiveIntensity: 1.4 });
+
 /** Общие материалы: модели переиспользуют их, а не создают на каждый экземпляр (SPEC §12). */
 const shared = Object.fromEntries(
   Object.entries(SPECS).map(([k, v]) => [k, new MeshStandardMaterial(v)]),
@@ -44,7 +47,7 @@ function ghostMaterials(ghost: GhostState): Record<OwnMaterial, MeshStandardMate
   ) as Record<OwnMaterial, MeshStandardMaterial>;
 }
 
-export function OwnModel({ parts, ghost }: { parts: readonly OwnPart[]; ghost: GhostState }) {
+export function OwnModel({ parts, ghost, lit = false }: { parts: readonly OwnPart[]; ghost: GhostState; lit?: boolean }) {
   const mats = useMemo(() => ghostMaterials(ghost), [ghost]);
   // Копии материалов призрака освобождаются; общие материалы живут всё время работы (их передают свойством, R3F их не освобождает).
   useEffect(() => () => {
@@ -53,7 +56,7 @@ export function OwnModel({ parts, ghost }: { parts: readonly OwnPart[]; ghost: G
   return (
     <>
       {parts.map((p, i) => {
-        const material = mats[p.mat];
+        const material = lit && ghost === 'none' && p.mat === 'shade' ? litShade : mats[p.mat];
         const shadow = ghost === 'none' && p.mat !== 'glass';
         if (p.shape === 'box')
           return (

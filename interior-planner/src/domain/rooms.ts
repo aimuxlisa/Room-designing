@@ -128,3 +128,6 @@ export const AREA_LABELS = {
   clear: 'Площадь помещений (чистая)',
   outer: 'Площадь по внешнему контуру (со стенами)',
 } as const;
+
+/** Габарит квартиры в плане по вершинам стен, см. */
+export const apartmentRect = (ap: Apartment): Rect => boundingRect(Object.values(ap.vertices).map((v) => ({ x: v.xCm, z: v.zCm })));
